@@ -58,7 +58,7 @@ class MainScreen(Screen):
                         spy_avatar="👤"
                     )
                     yield self.chat_component
-                yield InputBar(on_submit=self._on_message_submit)
+                yield InputBar(on_submit=self._on_message_submit, id="input-bar")
         
         yield Footer()
     

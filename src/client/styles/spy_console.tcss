@@ -12,12 +12,12 @@ Screen {
 
 .left-panel {
     width: 30%;
-    height: 100%;
+    height: 1fr;
 }
 
 .right-panel {
     width: 70%;
-    height: 100%;
+    height: 1fr;
     layout: vertical;
 }
 
@@ -70,7 +70,7 @@ Screen {
     margin-right: 1;
 }
 
-/* Chat window */
+/* Chat window container - takes remaining space */
 #chat-window {
     height: 1fr;
     border: solid green;
@@ -79,11 +79,19 @@ Screen {
     overflow-y: auto;
 }
 
-/* Input bar */
+/* Ensure the chat window widget fills the container */
+.chat-window-widget {
+    height: 100%;
+    width: 100%;
+}
+
+/* Input bar - fixed height at bottom */
 #input-bar {
     height: auto;
+    min-height: 3;
     border: solid green;
     padding: 1;
+    margin: 0;
 }
 
 /* Message styling */

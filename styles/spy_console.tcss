@@ -28,6 +28,33 @@ Screen {
     height: 1fr;
     border: solid green;
     margin: 0 0 0 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chat window */
+#chat-window {
+    flex: 1;
+    border: solid green;
+    margin: 1 0 0 0;
+    padding: 0 1;
+    overflow-y: auto;
+}
+
+/* ChatWindow widget - take remaining space */
+.chat-window-widget {
+    height: 100% !important;
+    flex: 1 !important;
+    overflow-y: auto;
+}
+
+/* Input bar */
+#input-bar {
+    height: 3;
+    border: solid green;
+    padding: 1;
+    margin: 0 0 1 0;
+    flex-shrink: 0;
 }
 
 /* Section title styling */
@@ -93,22 +120,6 @@ ListItem {
     min-width: 4;
     text-align: center;
     margin-right: 1;
-}
-
-/* Chat window */
-#chat-window {
-    height: 1fr;
-    border: solid green;
-    margin: 1 0;
-    padding: 0 1;
-    overflow-y: auto;
-}
-
-/* Input bar */
-#input-bar {
-    height: auto;
-    border: solid green;
-    padding: 1;
 }
 
 /* Message styling */

@@ -161,6 +161,7 @@ class ChatWindow(ScrollableContainer):
         self.spy_name = spy_name
         self.spy_avatar = spy_avatar
         self.typing_indicator = None
+        self.add_class("chat-window-widget")
         
     def compose(self) -> ComposeResult:
         yield Static(f"CHAT WITH {self.spy_name.upper()}", classes="section-title")
