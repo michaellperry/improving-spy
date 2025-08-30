@@ -42,7 +42,7 @@ This hands-on course walks you through building a full-stack Python app from scr
 | **Pydantic Models**                    | For data validation and structure                |
 | **SQLAlchemy ORM**                     | To store agent profiles and chats                |
 | **Pydantic AI**                        | For building agentic behavior                    |
-| **Ollama**                             | Run local LLMs like Llama3 without API keys      |
+| **Ollama**                             | Run local LLMs like qwen2.5:14b-instruct without API keys      |
 | **Optional: Streamlit / HTML frontend** | For final deployment and user interface          |
 
 ---

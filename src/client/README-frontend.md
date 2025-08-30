@@ -62,7 +62,7 @@ All from your terminal — no browser required.
 - **Communication**: 
   - REST: `GET /api/spies`, `POST /api/chat`, etc.
   - WebSocket: `ws://localhost:8000/ws/chat/{conversation_id}` for typing events
-- **LLM**: Runs locally via Ollama (e.g., `llama2`)
+- **LLM**: Runs locally via Ollama (e.g., `qwen2.5:14b-instruct`)
 - **No browser needed** — runs in your terminal!
 
 ---
@@ -71,7 +71,7 @@ All from your terminal — no browser required.
 
 - Python 3.13 (as specified in .python-version)
 - FastAPI backend running at `http://localhost:8000`
-- Ollama with a model installed (`ollama pull llama2`)
+- Ollama with a model installed (`ollama pull qwen2.5:14b-instruct`)
 - UV package manager (for dependency management and script execution)
 - Dependencies:
   ```bash

@@ -49,7 +49,7 @@ By the end of this lesson, students should be able to:
 from pydantic_ai import Agent
 
 # Initialize the agent
-agent = Agent('ollama:llama3.1', system_prompt="You are a helpful assistant.")
+agent = Agent('ollama:qwen2.5:14b-instruct', system_prompt="You are a helpful assistant.")
 
 # Basic chat interaction
 response = await agent.chat("Hello!")

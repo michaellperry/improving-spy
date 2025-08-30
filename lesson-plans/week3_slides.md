@@ -23,7 +23,7 @@ title: "🕵️ Week 3: Building Intelligent Agents with PydanticAI"
 
 ### Key Components
 
-- **LLM Core**: Processes and generates text (using Ollama/Llama3)
+- **LLM Core**: Processes and generates text (using Ollama/qwen2.5:14b-instruct)
 - **Tools**: Mission context retrieval, conversation management
 - **Memory**: Conversation history with persistence
 - **Context Awareness**: Mission-specific knowledge integration
@@ -81,7 +81,7 @@ class ChatAgent:
     def __init__(self, spy: Union[SpyProfile, Dict[str, Any]]):
         # Initialize with Ollama provider
         model = OpenAIModel(
-            'llama3.2',
+            'qwen2.5:14b-instruct',
             provider=OllamaProvider(base_url='http://localhost:11434/v1'),
         )
         
@@ -166,7 +166,7 @@ response = await ai.run("What was my first message?", messages=messages)
 uv add pydantic-ai ollama
 ```
 
-- Make sure Ollama is installed and at least one model pulled (e.g., llama2)
+        - Make sure Ollama is installed and at least one model pulled (e.g., qwen2.5:14b-instruct)
 
 ---
 
@@ -229,7 +229,7 @@ tools = [
 
 # Initialize agent with tools
 agent = Agent(
-    'ollama/llama2',
+            'ollama/qwen2.5:14b-instruct',
     system_prompt="You are a helpful AI assistant.",
     tools=tools
 )
@@ -387,7 +387,7 @@ Stay in character as {self.spy.name} at all times."""
         """Generate a response to a message, handling tool calls if needed."""
         # Initialize the agent with tools
         ai = Agent(
-            'ollama:llama3.1',
+            'ollama:qwen2.5:14b-instruct',
             system_prompt=self._get_system_prompt(),
             tools=[{"name": t["name"], "description": t["description"], 
                   "parameters": t["parameters"]} for t in self.tools]
