@@ -6,6 +6,8 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai.models.openai import OpenAIModel
 
+from ..tools.travel_tools import TravelTools
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -23,11 +25,9 @@ class ChatAgent:
             provider=OllamaProvider(base_url='http://localhost:11434/v1'),
         )
         
-        # Initialize with a simple system prompt
-        self.ai = Agent(
-            model=model,
-            system_prompt=self._get_system_prompt(),
-            tools=[Tool(
+        # Initialize with tools
+        tools = [
+            Tool(
                 self._get_mission_context,
                 name="get_mission_context",
                 description="""IMPORTANT: ONLY use this tool when the user explicitly asks for mission details by providing a mission ID.
@@ -38,7 +38,23 @@ class ChatAgent:
         
         DO NOT use this tool if the user doesn't explicitly mention a mission ID or ask for mission details.
         """.strip()
-            )]
+            )
+        ]
+        
+        # Add travel tools
+        travel_tools = TravelTools.get_tools()
+        for tool_info in travel_tools:
+            tools.append(Tool(
+                tool_info["function"],
+                name=tool_info["name"],
+                description=tool_info["description"]
+            ))
+        
+        # Initialize with a simple system prompt
+        self.ai = Agent(
+            model=model,
+            system_prompt=self._get_system_prompt(),
+            tools=tools
         )
         
         self._initialized = True
@@ -97,14 +113,21 @@ Codename: {codename}
 Biography: {biography}
 Specialty: {specialty}
 
-You have access to tools that can help you answer questions about missions, but use them SPARINGLY.
+You have access to tools that can help you answer questions about missions and travel, but use them SPARINGLY.
 
 IMPORTANT RULES FOR TOOL USAGE:
 1. ONLY use the get_mission_context tool if the user explicitly mentions a specific mission ID.
-2. If the user asks a general question without mentioning a specific mission ID, DO NOT use any tools.
-3. If you need mission context but the user hasn't provided an ID, ask them to specify which mission they're referring to.
-4. Never make assumptions about mission IDs - only use exact matches.
-5. For general conversation or questions that don't require specific mission details, respond naturally without using tools.
+2. Use travel tools (get_travel_state, update_travel_state, get_available_cities, get_train_schedules, plan_journey) when the user asks about travel, locations, or journey planning.
+3. If the user asks a general question without mentioning a specific mission ID or travel request, DO NOT use any tools.
+4. If you need mission context but the user hasn't provided an ID, ask them to specify which mission they're referring to.
+5. Never make assumptions about mission IDs - only use exact matches.
+6. For general conversation or questions that don't require specific mission details or travel information, respond naturally without using tools.
+
+TRAVEL CAPABILITIES:
+- You can check your current location and travel state
+- You can plan journeys between European cities
+- You can view available train schedules
+- You can update your travel location and inventory
 
 Stay in character as {name} at all times.  
 Don't be overly verbose.  
