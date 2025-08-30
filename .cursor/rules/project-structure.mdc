@@ -49,7 +49,6 @@ This is a full-stack Python application with a FastAPI backend and Textual-based
 
 ## Configuration & Dependencies
 - **Project Config**: [pyproject.toml](mdc:pyproject.toml) - Dependencies and project metadata
-- **Frontend Dependencies**: [src/client/requirements.txt](mdc:src/client/requirements.txt) - Frontend-specific packages
 - **Styles**: [styles/spy_console.tcss](mdc:styles/spy_console.tcss) - Textual UI styling
 
 ## Testing & Development
@@ -58,6 +57,6 @@ This is a full-stack Python application with a FastAPI backend and Textual-based
 - **Lesson Plans**: [lesson-plans/](mdc:lesson-plans/) - Course materials and documentation
 
 ## Key Entry Points
-- **Backend Server**: Run `uv run python main.py` from project root
-- **Frontend CLI**: Run `uv run python src/client/spy_cli.py` from project root
-- **CLI Runner**: Alternative entry via [run_cli.py](mdc:run_cli.py)
+- **Backend Server**: Run `uv run uvicorn main:app --port 8000 --reload` from project root
+- **Frontend CLI**: Run `uv run python run_cli.py` from project root
+- **Alternative CLI**: Direct entry via `uv run python src/client/spy_cli.py`

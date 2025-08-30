@@ -16,18 +16,18 @@ globs:
 ### Backend Server
 ```bash
 # From project root
-uv run python main.py
+uv run uvicorn main:app --port 8000 --reload
 ```
 The backend will start on `http://localhost:8000` with automatic API documentation at `/docs`
 
 ### Frontend CLI
 ```bash
 # From project root
-uv run python src/client/spy_cli.py
+uv run python run_cli.py
 ```
 Or use the alternative entry point:
 ```bash
-uv run python run_cli.py
+uv run python src/client/spy_cli.py
 ```
 
 ## Development Commands

@@ -61,23 +61,44 @@ You’ll build a **web-based chat app** where users can:
 ## 📁 Project Structure
 
 ```text
-chat-with-agent/
+improving-spy/
 ├── pyproject.toml
 ├── README.md
 ├── .gitignore
+├── main.py                    ← FastAPI server entry point
+├── run_cli.py                 ← CLI application runner
 ├── src/
-│   ├── main.py              ← Run server
-│   ├── agent.py             ← Agent logic
-│   ├── tools.py             ← Decoding, scanning, etc.
-│   ├── database.py          ← SQLAlchemy setup
-│   ├── models.py            ← Pydantic models
-│   └── api/
-│       ├── main.py          ← FastAPI entry point
-│       └── routes.py        ← Endpoints for agents and chat
-├── notes/
-│   └── session_1_to_4_notes.md
-└── tests/
-    └── test_agent.py
+│   ├── backend/
+│   │   ├── api/
+│   │   │   └── routes.py      ← API endpoints
+│   │   ├── core/
+│   │   │   ├── database.py    ← SQLAlchemy setup
+│   │   │   └── websocket_manager.py ← WebSocket handling
+│   │   ├── models/
+│   │   │   └── __init__.py    ← Pydantic and SQLAlchemy models
+│   │   ├── repositories/
+│   │   │   ├── spy_repository.py ← Spy data access
+│   │   │   └── conversation_repository.py ← Chat history
+│   │   ├── services/
+│   │   │   └── agent.py       ← AI agent logic
+│   │   └── tools/
+│   │       └── mission_tools.py ← Mission-specific tools
+│   └── client/
+│       ├── app.py             ← Textual application entry
+│       ├── spy_cli.py         ← Main CLI interface
+│       ├── api_client.py      ← Backend communication
+│       ├── config.py          ← Frontend configuration
+│       ├── screens/
+│       │   └── main.py        ← Main application screen
+│       └── widgets/
+│           ├── chat_window.py ← Chat interface
+│           ├── input_bar.py   ← User input handling
+│           ├── spy_selector.py ← Agent selection
+│           └── typing_indicator.py ← Visual feedback
+├── styles/
+│   └── spy_console.tcss      ← Textual UI styling
+├── tests/                     ← Test suite
+└── requests/                  ← API testing requests
 ```
 
 ---
@@ -105,8 +126,8 @@ pip install uv
 
 ```bash
 # Use the GitHub CLI or clone manually
-git clone https://github.com/your-username/chat-with-agent.git
-cd chat-with-agent
+git clone https://github.com/your-username/improving-spy.git
+cd improving-spy
 ```
 
 ### 3. Initialize the Project & Install Dependencies
@@ -128,6 +149,8 @@ uv run uvicorn main:app --port 8000 --reload
 ```
 
 This will start the FastAPI server with auto-reload enabled. The server will be available at `http://localhost:8000`.
+
+**Note**: The `main.py` file is located in the project root directory, not in the `src/` folder.
 
 ### 5. Start the Client Application
 

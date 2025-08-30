@@ -1,11 +1,35 @@
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 
 # SQLAlchemy ORM Base
 Base = declarative_base()
-__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse']
+__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse', 'City', 'CityModel', 'TrainSchedule', 'TrainScheduleModel', 'TravelState', 'TravelStateCreate', 'TravelStateUpdate']
+
+# Database Model: City
+class CityModel(Base):
+    __tablename__ = "cities"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    country = Column(String, nullable=False)
+    timezone = Column(String, nullable=False)
+    coordinates = Column(String, nullable=False)  # "lat,long" format
+
+# Database Model: Train Schedule
+class TrainScheduleModel(Base):
+    __tablename__ = "train_schedules"
+
+    id = Column(String, primary_key=True)
+    service_id = Column(String, nullable=False)  # e.g., "ICE123"
+    origin_city_id = Column(String, ForeignKey("cities.id"), nullable=False)
+    destination_city_id = Column(String, ForeignKey("cities.id"), nullable=False)
+    departure_time = Column(String, nullable=False)  # "HH:MM" format
+    arrival_time = Column(String, nullable=False)   # "HH:MM" format
+    days_of_week = Column(String, nullable=False)  # "1,2,3,4,5,6,7" for daily service
 
 # Database Model: Spy (SQLAlchemy)
 class SpyModel(Base):
@@ -27,6 +51,62 @@ class Conversation(Base):
     mission_id = Column(String, nullable=True)
 
 # Pydantic Models (for API)
+class CityBase(BaseModel):
+    """Base Pydantic model for City with common fields"""
+    name: str
+    country: str
+    timezone: str
+    coordinates: str
+
+class CityCreate(CityBase):
+    """Pydantic model for creating a new city"""
+    pass
+
+class City(CityBase):
+    """Pydantic model for City responses"""
+    id: str
+
+    class Config:
+        from_attributes = True
+
+class TrainScheduleBase(BaseModel):
+    """Base Pydantic model for Train Schedule with common fields"""
+    service_id: str
+    origin_city_id: str
+    destination_city_id: str
+    departure_time: str
+    arrival_time: str
+    days_of_week: str
+
+class TrainScheduleCreate(TrainScheduleBase):
+    """Pydantic model for creating a new train schedule"""
+    pass
+
+class TrainSchedule(TrainScheduleBase):
+    """Pydantic model for Train Schedule responses"""
+    id: str
+
+    class Config:
+        from_attributes = True
+
+class TravelState(BaseModel):
+    """Pydantic model for spy travel state"""
+    city_id: str = Field(..., description="Current city ID")
+    time_utc: datetime = Field(..., description="Current time in UTC")
+    inventory: Dict[str, Any] = Field(default_factory=dict, description="Travel inventory (tickets, passport, etc.)")
+
+class TravelStateCreate(BaseModel):
+    """Pydantic model for creating travel state"""
+    city_id: str
+    time_utc: datetime
+    inventory: Optional[Dict[str, Any]] = None
+
+class TravelStateUpdate(BaseModel):
+    """Pydantic model for updating travel state"""
+    city_id: Optional[str] = None
+    time_utc: Optional[datetime] = None
+    inventory: Optional[Dict[str, Any]] = None
+
 class SpyBase(BaseModel):
     """Base Pydantic model for Spy with common fields"""
     name: str
@@ -41,6 +121,7 @@ class SpyCreate(SpyBase):
 class Spy(SpyBase):
     """Pydantic model for Spy responses"""
     id: str
+    travel_state: Optional[TravelState] = None
 
     class Config:
         from_attributes = True
@@ -51,6 +132,7 @@ class SpyProfile(BaseModel):
     codename: str
     biography: str
     specialty: str
+    travel_state: Optional[TravelState] = None
 
 # Tool-related Models
 class ToolCall(BaseModel):
