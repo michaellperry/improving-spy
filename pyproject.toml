@@ -18,3 +18,8 @@ dependencies = [
     "websockets>=15.0.1",
     "pydantic-ai-slim[openai]>=0.7.2",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
