@@ -28,6 +28,7 @@ class ChatAgent:
             model=model,
             system_prompt=self._get_system_prompt(),
             tools=[Tool(
+                self._get_mission_context,
                 name="get_mission_context",
                 description="""IMPORTANT: ONLY use this tool when the user explicitly asks for mission details by providing a mission ID.
         Examples of when to use:
@@ -36,8 +37,7 @@ class ChatAgent:
         - User provides a mission ID like "mission_123"
         
         DO NOT use this tool if the user doesn't explicitly mention a mission ID or ask for mission details.
-        """.strip(),
-                function=self._get_mission_context
+        """.strip()
             )]
         )
         
@@ -114,7 +114,11 @@ You must yes-and the user's questions."""
     
     def _get_tool_by_name(self, name: str) -> Optional[Dict]:
         """Get a tool by its name."""
-        return next((t for t in self.tools if t["name"] == name), None)
+        # Find the tool in the agent's toolsets
+        for toolset in self.ai.toolsets:
+            if hasattr(toolset, 'tools') and name in toolset.tools:
+                return toolset.tools[name]
+        return None
     
     async def _handle_tool_call(self, tool_call: Dict) -> Dict:
         """Handle a single tool call."""
@@ -126,7 +130,8 @@ You must yes-and the user's questions."""
             }
             
         try:
-            result = tool["function"](**tool_call["arguments"])
+            # Execute the tool function
+            result = tool.function(**tool_call["arguments"])
             return {
                 "tool_call_id": tool_call.get("id", ""),
                 "name": tool_call["name"],
@@ -164,11 +169,41 @@ You must yes-and the user's questions."""
             if response.startswith('"') and response.endswith('"'):
                 response = response[1:-1]  # Remove surrounding quotes
             
+            # Check if there were any tool calls in the messages
+            tool_calls = []
+            if hasattr(result, 'all_messages'):
+                messages = result.all_messages()
+                if callable(messages):
+                    messages = messages()
+                # Look for tool calls in the messages
+                for msg in messages:
+                    if hasattr(msg, 'parts'):
+                        for part in msg.parts:
+                            # Check for ToolCallPart objects
+                            if hasattr(part, 'part_kind') and 'tool-call' in str(part.part_kind).lower():
+                                # Get the arguments - args_as_dict is a method that needs to be called
+                                args = {}
+                                if hasattr(part, 'args_as_dict') and callable(part.args_as_dict):
+                                    try:
+                                        args = part.args_as_dict()
+                                    except Exception as e:
+                                        logger.warning(f"Error getting args_as_dict: {e}")
+                                        args = {}
+                                
+                                tool_call = {
+                                    'id': getattr(part, 'tool_call_id', ''),
+                                    'name': getattr(part, 'tool_name', ''),
+                                    'arguments': args
+                                }
+                                tool_calls.append(tool_call)
+                                logger.info(f"Tool call detected: {tool_call['name']} with args {tool_call['arguments']}")
+            
             logger.info("Preparing final response")
             return {
                 "response": response,
                 "spy_id": str(self.spy.get('id', '')),
-                "spy_name": self.spy.get('name', 'Unknown')
+                "spy_name": self.spy.get('name', 'Unknown'),
+                "tool_calls": tool_calls
             }
             
         except Exception as e:
@@ -176,5 +211,6 @@ You must yes-and the user's questions."""
             return {
                 "response": f"I encountered an error: {str(e)}",
                 "spy_id": str(self.spy.get('id', '')),
-                "spy_name": self.spy.get('name', 'Unknown')
+                "spy_name": self.spy.get('name', 'Unknown'),
+                "tool_calls": []
             }
