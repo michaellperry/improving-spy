@@ -12,15 +12,88 @@ Textual interprets CSS-like properties differently from web browsers:
 
 - **`height: auto`** in Textual means "take as much space as needed" and can lead to greedy expansion
 - **`height: 1fr`** means "take remaining available space" after other constraints are satisfied
-- **Explicit height values** (e.g., `height: 6`) provide predictable, fixed sizing
+- **Explicit height values** (e.g., `height: 3`) provide predictable, fixed sizing (1 unit = 1 line)
 - **`max-height`** acts as a crucial constraint to prevent unlimited expansion
 
 ### Space Allocation Priority
 Textual's layout engine follows this priority order:
-1. Fixed/explicit sizes (e.g., `height: 6`)
+1. Fixed/explicit sizes (e.g., `height: 3`)
 2. Maximum constraints (`max-height`, `max-width`)
 3. Fractional units (`1fr`, `2fr`)
 4. Auto-sizing (`height: auto`)
+
+## Layout Design Best Practices
+
+### 1. Start with Layout Sketching
+**Begin by creating a rough sketch** of your application's layout before writing any code. This foundational step aids in visualizing the interface and planning the arrangement of widgets. ([textual.textualize.io](https://textual.textualize.io/how-to/design-a-layout/?utm_source=openai))
+
+**Example Sketch Process**:
+```
+1. Draw the overall terminal window
+2. Mark header/footer areas
+3. Identify main content regions
+4. Plan widget placement
+5. Note scrolling requirements
+```
+
+### 2. Adopt an 'Outside-In' Approach
+**Start with the outermost elements** such as headers, footers, or sidebars before focusing on the inner components. This method ensures a structured and organized layout development. ([textual.textualize.io](https://textual.textualize.io/how-to/design-a-layout/?utm_source=openai))
+
+**Recommended Order**:
+1. Screen container and main layout
+2. Headers and footers (docked)
+3. Sidebars and navigation panels
+4. Main content areas
+5. Individual widgets and components
+
+### 3. Utilize Docking for Fixed Elements
+**Introduce docking for elements that remain stationary**, like headers and footers. Docking these components reserves space and prevents them from shifting during window resizing. ([textual.textualize.io](https://textual.textualize.io/how-to/design-a-layout/?utm_source=openai))
+
+**Docking Implementation**:
+```python
+# In your screen compose method
+yield Header()  # Automatically docked at top
+yield Footer()  # Automatically docked at bottom
+
+# Or manually dock widgets
+widget = Widget()
+widget.dock = "top"  # or "bottom", "left", "right"
+```
+
+### 4. Implement Fractional Units for Flexibility
+**Encourage the use of fractional (`fr`) units** to allocate space among flexible widgets. This approach allows for dynamic resizing and proportional distribution of available space. ([textual.textualize.io](https://textual.textualize.io/how-to/design-a-layout/?utm_source=openai))
+
+**Fractional Unit Examples**:
+```css
+/* Equal distribution */
+grid-columns: 1fr 1fr 1fr;
+
+/* Proportional distribution */
+grid-columns: 1fr 2fr 1fr;  /* Middle gets twice the space */
+
+/* Fixed + flexible */
+grid-columns: 200px 1fr;     /* Fixed sidebar + flexible content */
+```
+
+### 5. Leverage Built-in Containers
+**Highlight the availability of built-in container widgets**, such as `VerticalScroll` and `HorizontalScroll`, which facilitate the organization of content and manage scrolling behavior effectively. ([textual.textualize.io](https://textual.textualize.io/how-to/design-a-layout/?utm_source=openai))
+
+**Built-in Container Options**:
+```python
+from textual.containers import VerticalScroll, HorizontalScroll, Container
+
+# Vertical scrolling container
+yield VerticalScroll(
+    Container(classes="content"),
+    classes="scrollable-area"
+)
+
+# Horizontal scrolling container
+yield HorizontalScroll(
+    Container(classes="wide-content"),
+    classes="horizontal-scroll"
+)
+```
 
 ## Common Layout Pitfalls and Solutions
 
@@ -51,8 +124,8 @@ Textual's layout engine follows this priority order:
 }
 
 .spy-list {
-    height: 6;          /* Explicit size */
-    max-height: 6;      /* Reinforced constraint */
+    height: 3;          /* Explicit size: exactly 3 lines */
+    max-height: 3;      /* Reinforced constraint */
     overflow-y: auto;   /* Handle content overflow */
 }
 
@@ -81,19 +154,23 @@ Textual's layout engine follows this priority order:
 ```css
 /* App grid layout */
 #app-grid {
-    layout: horizontal;
-    height: 100%;
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 15% 1fr;  /* Left panel 15%, right panel 85% */
+    height: 1fr;
+    margin: 1;
 }
 
 .left-panel {
-    width: 30%;         /* Predictable width allocation */
-    height: 100%;       /* Full height utilization */
+    width: 100%;         /* Full width of allocated column */
+    height: auto;        /* Auto height with constraints */
+    max-height: 6;       /* Prevent expansion */
 }
 
 .right-panel {
-    width: 70%;         /* Remaining width */
-    height: 100%;
-    layout: vertical;   /* Vertical stacking inside */
+    width: 100%;         /* Full width of allocated column */
+    height: 1fr;         /* Take remaining height */
+    layout: vertical;    /* Vertical stacking inside */
 }
 ```
 
@@ -105,20 +182,20 @@ Textual's layout engine follows this priority order:
 ```
 Screen (100% height)
 └── #app-grid (horizontal layout, 100% height)
-    ├── .left-panel (30% width, 100% height)
-    │   └── #spy-selector (auto height, max 8)
-    │       └── .spy-list (height 6, scrollable)
-    └── .right-panel (70% width, 100% height, vertical layout)
+    ├── .left-panel (15% width, constrained height)
+    │   └── #spy-selector (auto height, max 6)
+    │       └── .spy-list (height 3, scrollable)
+    └── .right-panel (85% width, 100% height, vertical layout)
         ├── #chat-window (1fr height, scrollable)
         └── #input-bar (auto height)
 ```
 
 ### Panel Sizing Best Practices
 
-**30%/70% Split Pattern**:
+**15%/85% Split Pattern** (as implemented in SpyApp):
 - Use percentage widths for predictable horizontal allocation
 - Ensure parent container has explicit dimensions
-- Apply `height: 100%` to maintain vertical space utilization
+- Apply `height: 1fr` to maintain vertical space utilization
 - Use `layout: vertical` or `layout: horizontal` appropriately
 
 ## Practical Implementation Patterns
@@ -156,18 +233,18 @@ Screen (100% height)
 2. **Content level**: Set explicit `height` on inner content
 3. **Overflow handling**: Add `overflow-y: auto` for scrolling
 
-**Example from SpySelector**:
+**Example from SpySelector** (Corrected Implementation):
 ```css
 #spy-selector {
     height: auto;
-    max-height: 8;      /* Outer constraint */
+    max-height: 6;      /* Outer constraint */
     margin: 1 0;
     border: solid green;
 }
 
 .spy-list {
-    height: 6;          /* Inner explicit size */
-    max-height: 6;      /* Reinforced constraint */
+    height: 3;          /* Inner explicit size: exactly 3 lines */
+    max-height: 3;      /* Reinforced constraint */
     border: none;
     overflow-y: auto;   /* Scrolling for overflow */
 }
@@ -176,7 +253,7 @@ Screen (100% height)
 ### Scrolling Implementation
 
 **Effective Scrolling Pattern**:
-- Set explicit height constraints
+- Set explicit height constraints (`height: 3` for exactly 3 lines)
 - Add `overflow-y: auto` to enable vertical scrolling
 - Ensure parent containers don't interfere with scroll behavior
 - Test with varying content amounts
@@ -234,6 +311,11 @@ test_cases = [
 
 When implementing Textual layouts:
 
+- [ ] **Sketch the layout** before coding
+- [ ] **Start outside-in** (headers, footers, main areas, then widgets)
+- [ ] **Use docking** for fixed elements (headers, footers)
+- [ ] **Implement fractional units** (`1fr`) for flexible areas
+- [ ] **Leverage built-in containers** (`VerticalScroll`, `HorizontalScroll`)
 - [ ] Define explicit constraints for all major components
 - [ ] Pair `height: auto` with `max-height` limitations
 - [ ] Use `height: 1fr` for components that should fill remaining space
@@ -245,10 +327,18 @@ When implementing Textual layouts:
 
 ## Key Takeaways
 
-1. **Explicit constraints prevent layout chaos** - Always define maximum sizes for auto-sizing components
-2. **Hierarchical thinking is crucial** - Understand how parent containers affect child sizing
-3. **Visual verification is non-negotiable** - Terminal layouts must be tested visually
-4. **Scrolling requires careful implementation** - Combine explicit sizing with overflow handling
-5. **Textual is not web CSS** - Different rules and behaviors require different approaches
+1. **Plan before coding** - Sketch layouts and use outside-in approach
+2. **Use docking strategically** - Reserve space for fixed elements
+3. **Embrace fractional units** - Enable flexible, responsive layouts
+4. **Leverage built-in containers** - Use Textual's specialized widgets
+5. **Explicit constraints prevent layout chaos** - Always define maximum sizes for auto-sizing components
+6. **Hierarchical thinking is crucial** - Understand how parent containers affect child sizing
+7. **Visual verification is non-negotiable** - Terminal layouts must be tested visually
+8. **Scrolling requires careful implementation** - Combine explicit sizing with overflow handling
+9. **Textual is not web CSS** - Different rules and behaviors require different approaches
 
-This knowledge base should prevent common Textual layout pitfalls and enable more predictable, maintainable terminal user interfaces.
+## Reference Official Documentation
+
+For comprehensive information and advanced topics, always refer to the official Textual documentation: [textual.textualize.io](https://textual.textualize.io/?utm_source=openai)
+
+This knowledge base should prevent common Textual layout pitfalls and enable more predictable, maintainable terminal user interfaces while following current best practices and official recommendations.
