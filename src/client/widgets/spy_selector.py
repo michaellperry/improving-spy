@@ -46,7 +46,10 @@ class SpySelector(Static):
         
     def compose(self) -> ComposeResult:
         yield Label(" SELECT AGENT", classes="section-title")
-        yield ListView(id="spy-list", classes="spy-list")
+        yield ListView(
+            id="spy-list", 
+            classes="spy-list"
+        )
     
     def on_mount(self) -> None:
         """Add spy items to the list after the ListView is mounted"""

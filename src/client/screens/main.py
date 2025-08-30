@@ -41,7 +41,7 @@ class MainScreen(Screen):
         yield Header()
         
         with Container(id="app-grid"):
-            with Vertical(id="left-panel"):
+            with Vertical(id="left-panel", classes="left-panel"):
                 yield Label("Available Spies", classes="section-title")
                 # Initialize with empty spies list
                 yield SpySelector(
@@ -49,7 +49,7 @@ class MainScreen(Screen):
                     spies=[]  # Will be populated in on_mount
                 )
             
-            with Vertical(id="right-panel"):
+            with Vertical(id="right-panel", classes="right-panel"):
                 # Create a container for the chat window with an ID
                 with Container(id="chat-window"):
                     # Initialize with default values that can be updated later

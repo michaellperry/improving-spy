@@ -4,6 +4,32 @@ Screen {
     color: #00ff00;
 }
 
+/* App grid layout - optimized for console */
+#app-grid {
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 15% 1fr;  /* Left panel takes only 15%, right panel takes 85% */
+    height: 1fr;
+    margin: 1;
+}
+
+/* Left panel - spy selector (ultra compact for console) */
+.left-panel {
+    width: 100%;
+    height: auto;
+    border: solid green;
+    margin: 0 1 0 0;
+    min-width: 20;  /* Reduce minimum width */
+}
+
+/* Right panel - chat area (maximized for console) */
+.right-panel {
+    width: 100%;
+    height: 1fr;
+    border: solid green;
+    margin: 0 0 0 1;
+}
+
 /* Section title styling */
 .section-title {
     background: #003300;
@@ -35,10 +61,29 @@ Screen {
     border: solid green;
 }
 
-/* Spy list */
+/* Spy list - exactly 3 lines for console */
 .spy-list {
-    height: auto;
+    height: 3;  /* Exactly 3 lines */
     border: none;
+    overflow-y: auto;  /* Enable vertical scrolling */
+    max-height: 3;  /* Ensure maximum height constraint */
+    margin: 0;  /* Remove margins */
+    padding: 0;  /* Remove padding */
+}
+
+/* Force the ListView to respect height constraints */
+#spy-list {
+    height: 3 !important;
+    max-height: 3 !important;
+    min-height: 3 !important;
+    overflow-y: auto !important;
+}
+
+/* Ensure each ListItem takes exactly 1 line */
+ListItem {
+    height: 1;
+    min-height: 1;
+    max-height: 1;
 }
 
 /* Spy avatar */
@@ -88,4 +133,21 @@ Screen {
     color: #00ff00;
     height: 1;
     padding: 0 1;
+}
+
+/* Console-specific optimizations */
+@media (max-width: 80) {
+    #app-grid {
+        grid-columns: 25% 1fr;  /* Wider left panel on small terminals */
+    }
+    
+    .left-panel {
+        min-width: 18;
+    }
+}
+
+@media (min-width: 120) {
+    #app-grid {
+        grid-columns: 12% 1fr;  /* Even narrower left panel on large terminals */
+    }
 }

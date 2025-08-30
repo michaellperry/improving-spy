@@ -1,0 +1,254 @@
+---
+description: Use when working with Textual CSS layouts, grid systems, or debugging layout issues.
+applyAlways: false
+---
+
+# Textual Layout System Lessons
+
+## Textual Layout System Fundamentals
+
+### CSS-like Properties vs Web CSS
+Textual interprets CSS-like properties differently from web browsers:
+
+- **`height: auto`** in Textual means "take as much space as needed" and can lead to greedy expansion
+- **`height: 1fr`** means "take remaining available space" after other constraints are satisfied
+- **Explicit height values** (e.g., `height: 6`) provide predictable, fixed sizing
+- **`max-height`** acts as a crucial constraint to prevent unlimited expansion
+
+### Space Allocation Priority
+Textual's layout engine follows this priority order:
+1. Fixed/explicit sizes (e.g., `height: 6`)
+2. Maximum constraints (`max-height`, `max-width`)
+3. Fractional units (`1fr`, `2fr`)
+4. Auto-sizing (`height: auto`)
+
+## Common Layout Pitfalls and Solutions
+
+### The "Greedy Expansion" Problem
+
+**Problem**: Multiple components with `height: auto` compete for space, often resulting in one component taking excessive space.
+
+**Example from SpyApp**: The agent selection list was initially taking too much vertical space because both the spy selector and chat window had `height: auto`.
+
+**Solution**: Use explicit constraints and hierarchical sizing:
+
+```css
+/* BEFORE - Problematic approach */
+#spy-selector {
+    height: auto;  /* Greedy expansion */
+}
+
+#chat-window {
+    height: auto;  /* Competing for space */
+}
+
+/* AFTER - Fixed approach */
+#spy-selector {
+    height: auto;
+    max-height: 8;  /* Constraint prevents expansion */
+    margin: 1 0;
+    border: solid green;
+}
+
+.spy-list {
+    height: 6;          /* Explicit size */
+    max-height: 6;      /* Reinforced constraint */
+    overflow-y: auto;   /* Handle content overflow */
+}
+
+#chat-window {
+    height: 1fr;        /* Takes remaining space */
+    overflow-y: auto;
+}
+```
+
+### Why Explicit Constraints Are Crucial
+
+**Key Principle**: In Textual, predictable layouts require explicit constraints rather than relying on auto-sizing.
+
+**Best Practices**:
+- Always pair `height: auto` with `max-height` for containers that might expand
+- Use explicit heights for components with known size requirements
+- Reserve `height: 1fr` for components that should fill remaining space
+- Implement `overflow-y: auto` for scrollable content areas
+
+## Grid and Container Layout Patterns
+
+### Horizontal/Vertical Split Layouts
+
+**Effective Pattern**: Use percentage-based widths with explicit height management:
+
+```css
+/* App grid layout */
+#app-grid {
+    layout: horizontal;
+    height: 100%;
+}
+
+.left-panel {
+    width: 30%;         /* Predictable width allocation */
+    height: 100%;       /* Full height utilization */
+}
+
+.right-panel {
+    width: 70%;         /* Remaining width */
+    height: 100%;
+    layout: vertical;   /* Vertical stacking inside */
+}
+```
+
+### Nested Container Hierarchy Impact
+
+**Critical Understanding**: Layout constraints cascade through container hierarchies. Child containers inherit space limitations from parents.
+
+**Example Structure**:
+```
+Screen (100% height)
+└── #app-grid (horizontal layout, 100% height)
+    ├── .left-panel (30% width, 100% height)
+    │   └── #spy-selector (auto height, max 8)
+    │       └── .spy-list (height 6, scrollable)
+    └── .right-panel (70% width, 100% height, vertical layout)
+        ├── #chat-window (1fr height, scrollable)
+        └── #input-bar (auto height)
+```
+
+### Panel Sizing Best Practices
+
+**30%/70% Split Pattern**:
+- Use percentage widths for predictable horizontal allocation
+- Ensure parent container has explicit dimensions
+- Apply `height: 100%` to maintain vertical space utilization
+- Use `layout: vertical` or `layout: horizontal` appropriately
+
+## Practical Implementation Patterns
+
+### CSS Patterns That Work Well
+
+**Container Sizing**:
+```css
+/* Reliable container pattern */
+.container {
+    width: 100%;
+    height: 100%;
+    layout: vertical;
+}
+
+/* Constrained scrollable area */
+.scrollable-content {
+    height: 1fr;
+    overflow-y: auto;
+    border: solid green;
+}
+
+/* Fixed-size component */
+.fixed-component {
+    height: auto;
+    max-height: 8;
+    border: solid green;
+}
+```
+
+### Component Size Limitation Strategies
+
+**Multi-layered Constraints**:
+1. **Container level**: Set `max-height` on the outer container
+2. **Content level**: Set explicit `height` on inner content
+3. **Overflow handling**: Add `overflow-y: auto` for scrolling
+
+**Example from SpySelector**:
+```css
+#spy-selector {
+    height: auto;
+    max-height: 8;      /* Outer constraint */
+    margin: 1 0;
+    border: solid green;
+}
+
+.spy-list {
+    height: 6;          /* Inner explicit size */
+    max-height: 6;      /* Reinforced constraint */
+    border: none;
+    overflow-y: auto;   /* Scrolling for overflow */
+}
+```
+
+### Scrolling Implementation
+
+**Effective Scrolling Pattern**:
+- Set explicit height constraints
+- Add `overflow-y: auto` to enable vertical scrolling
+- Ensure parent containers don't interfere with scroll behavior
+- Test with varying content amounts
+
+## Debugging and Testing Approaches
+
+### Visual Verification is Essential
+
+**Why Visual Testing Matters**:
+- Textual layouts can behave differently than expected based on CSS knowledge
+- Terminal rendering varies across different terminal emulators
+- Layout issues often only manifest with specific content amounts or terminal sizes
+
+**Testing Strategy**:
+1. Test with minimal content (1-2 items)
+2. Test with maximum expected content (10+ items)
+3. Test with varying terminal window sizes
+4. Verify scrolling behavior works correctly
+
+### Systematic Layout Problem Approach
+
+**Debugging Process**:
+1. **Identify the problem**: Which component is misbehaving?
+2. **Check constraints**: Are there explicit size limitations?
+3. **Examine hierarchy**: How do parent containers affect sizing?
+4. **Test incrementally**: Make one change at a time
+5. **Verify visually**: Always test the actual UI behavior
+
+**Common Debug Techniques**:
+- Add temporary borders to visualize component boundaries
+- Use explicit heights to test space allocation
+- Temporarily remove `overflow` properties to see full content
+- Check for competing `height: auto` declarations
+
+### Testing Strategies for Terminal UIs
+
+**Comprehensive Testing Approach**:
+- **Content variation**: Test with different amounts of data
+- **Terminal sizes**: Test in various terminal dimensions
+- **Interaction testing**: Verify scrolling and selection work correctly
+- **Edge cases**: Test with empty states and maximum content
+
+**Key Test Scenarios**:
+```python
+# Test with varying spy counts
+test_cases = [
+    {"spies": []},                    # Empty state
+    {"spies": [single_spy]},          # Minimal content
+    {"spies": list_of_5_spies},       # Normal content
+    {"spies": list_of_20_spies},      # Overflow content
+]
+```
+
+## Implementation Checklist
+
+When implementing Textual layouts:
+
+- [ ] Define explicit constraints for all major components
+- [ ] Pair `height: auto` with `max-height` limitations
+- [ ] Use `height: 1fr` for components that should fill remaining space
+- [ ] Implement `overflow-y: auto` for scrollable areas
+- [ ] Test with varying content amounts
+- [ ] Verify layout works in different terminal sizes
+- [ ] Check that scrolling behavior is intuitive
+- [ ] Ensure no components exhibit greedy expansion
+
+## Key Takeaways
+
+1. **Explicit constraints prevent layout chaos** - Always define maximum sizes for auto-sizing components
+2. **Hierarchical thinking is crucial** - Understand how parent containers affect child sizing
+3. **Visual verification is non-negotiable** - Terminal layouts must be tested visually
+4. **Scrolling requires careful implementation** - Combine explicit sizing with overflow handling
+5. **Textual is not web CSS** - Different rules and behaviors require different approaches
+
+This knowledge base should prevent common Textual layout pitfalls and enable more predictable, maintainable terminal user interfaces.

@@ -4,6 +4,23 @@ Screen {
     color: #00ff00;
 }
 
+/* App grid layout */
+#app-grid {
+    layout: horizontal;
+    height: 100%;
+}
+
+.left-panel {
+    width: 30%;
+    height: 100%;
+}
+
+.right-panel {
+    width: 70%;
+    height: 100%;
+    layout: vertical;
+}
+
 /* Section title styling */
 .section-title {
     background: #003300;
@@ -31,14 +48,17 @@ Screen {
 /* Spy selector */
 #spy-selector {
     height: auto;
+    max-height: 8;
     margin: 1 0;
     border: solid green;
 }
 
 /* Spy list */
 .spy-list {
-    height: auto;
+    height: 6;
+    max-height: 6;
     border: none;
+    overflow-y: auto;
 }
 
 /* Spy avatar */
