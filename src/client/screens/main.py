@@ -40,40 +40,39 @@ class MainScreen(Screen):
         """Create child widgets for the app."""
         yield Header()
         
-        try:
-            with Container(id="app-grid"):
-                with Vertical(id="left-panel"):
-                    self.log("Creating left panel...")
-                    yield Label("Available Spies", classes="section-title")
-                    
-                    # Create a container for the spy selector
-                    with Container(classes="spy-selector-wrapper"):
-                        self.log("Creating SpySelector...")
-                        # Initialize with empty spies list
-                        self.spy_selector = SpySelector(
-                            id="spy-selector",
-                            spies=self.spies  # Pass the current spies list
-                        )
-                        self.log(f"SpySelector created: {self.spy_selector}")
-                        yield self.spy_selector
+        with Container(id="app-grid"):
+            with Vertical(id="left-panel"):
+                self.log("Creating left panel...")
+                yield Label("Available Spies", classes="section-title")
                 
-                with Vertical(id="right-panel"):
-                    self.log("Creating right panel...")
-                    # Create a container for the chat window with an ID
-                    with Container(id="chat-window", classes="pre-selection"):
-                        # Initialize with default values that can be updated later
-                        self.chat_component = ChatWindow(
-                            spy_name="Agent",
-                            spy_avatar="👤"
-                        )
-                        self.log(f"ChatWindow created: {self.chat_component}")
-                        yield self.chat_component
-                    
-                    self.log("Creating InputBar...")
-                    self.input_bar = InputBar(on_submit=self._on_message_submit, id="input-bar")
-                    self.input_bar.add_class("pre-selection")
-                    yield self.input_bar
-        
+                # Create a container for the spy selector
+                with Container(classes="spy-selector-wrapper"):
+                    self.log("Creating SpySelector...")
+                    # Initialize with empty spies list
+                    self.spy_selector = SpySelector(
+                        id="spy-selector",
+                        spies=self.spies  # Pass the current spies list
+                    )
+                    self.log(f"SpySelector created: {self.spy_selector}")
+                    yield self.spy_selector
+            
+            with Vertical(id="right-panel"):
+                self.log("Creating right panel...")
+                # Create a container for the chat window with an ID
+                with Container(id="chat-window", classes="pre-selection"):
+                    # Initialize with default values that can be updated later
+                    self.chat_component = ChatWindow(
+                        spy_name="Agent",
+                        spy_avatar="👤"
+                    )
+                    self.log(f"ChatWindow created: {self.chat_component}")
+                    yield self.chat_component
+                
+                self.log("Creating InputBar...")
+                self.input_bar = InputBar(on_submit=self._on_message_submit, id="input-bar")
+                self.input_bar.add_class("pre-selection")
+                yield self.input_bar
+    
         yield Footer()
     
     async def on_mount(self) -> None:
