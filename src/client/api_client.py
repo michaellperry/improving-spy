@@ -94,57 +94,6 @@ class SpyAPIClient:
             logging.error(f"{error_msg} Details: {str(e)}")
             raise ConnectionError(error_msg)
     
-    async def chat(
-        self, 
-        spy_id: str, 
-        message: str,
-        tool_calls: Optional[List[Dict]] = None,
-        tool_outputs: Optional[List[Dict]] = None
-    ) -> Dict[str, Any]:
-        """
-        Send a message in chat mode with optional tool calls.
-        
-        Args:
-            spy_id: ID of the spy to chat with
-            message: The message to send
-            tool_calls: List of tool calls to process
-            tool_outputs: Outputs from previous tool calls
-            
-        Returns:
-            Dict containing the response and any tool calls
-            
-        Raises:
-            httpx.HTTPStatusError: If the API returns an error status code
-            httpx.RequestError: If the request fails to be sent
-            ConnectionError: If the server is unreachable
-        """
-        try:
-            payload = {"message": message}
-            if tool_calls:
-                payload["tool_calls"] = tool_calls
-            if tool_outputs:
-                payload["tool_outputs"] = tool_outputs
-                
-            response = await self.client.post(
-                f"{self.base_url}/api/chat/{spy_id}",
-                json=payload
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                error_msg = f"Spy not found: No spy exists with ID '{spy_id}'"
-            elif e.response.status_code == 422:
-                error_msg = f"Validation Error: The request format is invalid. Details: {e.response.text}"
-            else:
-                error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
-            logging.error(error_msg)
-            raise ConnectionError(error_msg)
-        except httpx.RequestError as e:
-            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/{spy_id}. Please check your network connection and ensure the server is running."
-            logging.error(f"{error_msg} Details: {str(e)}")
-            raise ConnectionError(error_msg)
-    
     async def chat_with_history(
         self, 
         spy_id: str, 
@@ -194,7 +143,7 @@ class SpyAPIClient:
             logging.error(error_msg)
             raise ConnectionError(error_msg)
         except httpx.RequestError as e:
-            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/{spy_id}/conversation/{conversation_id}. Please check your network connection and ensure the server is running."
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/conversation/{conversation_id}. Please check your network connection and ensure the server is running."
             logging.error(f"{error_msg} Details: {str(e)}")
             raise ConnectionError(error_msg)
     

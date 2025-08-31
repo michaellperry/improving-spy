@@ -28,6 +28,7 @@ class MainScreen(Screen):
     ]
     
     active_spy = reactive(None)
+    conversation_id = reactive(None)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,6 +109,21 @@ class MainScreen(Screen):
         self.chat_component.spy_avatar = spy_data.get('avatar', '👤')
         self.chat_component.clear()
         
+        # Clear previous conversation state
+        self.conversation_id = None
+        self.messages = []
+        
+        try:
+            # Create new conversation immediately when spy is selected
+            spy_id = spy_data.get('id')
+            if spy_id:
+                conv = await self.api_client.create_conversation(spy_id)
+                self.conversation_id = conv.get("conversation_id")
+                self.notify(f"New conversation created: {self.conversation_id}", title="Conversation Started")
+        except Exception as e:
+            self.notify(f"Failed to create conversation: {str(e)}", severity="error")
+            self.conversation_id = None
+        
         input_field = self.query_one("#message-input")
         if input_field:
             input_field.focus()
@@ -128,6 +144,10 @@ class MainScreen(Screen):
             self.notify("Please select a spy first", severity="warning")
             return
             
+        if not self.conversation_id:
+            self.notify("No active conversation. Please select a spy first.", severity="warning")
+            return
+            
         # Add user message to chat
         self.chat_component.add_message(message, is_user=True)
         
@@ -141,11 +161,12 @@ class MainScreen(Screen):
                 raise ValueError("No spy ID found in active spy data")
             
             # Log the request
-            print(f"Sending message to spy {spy_id}: {message}")
+            print(f"Sending message to spy {spy_id} in conversation {self.conversation_id}: {message}")
             
-            # Send message via HTTP
-            response = await self.api_client.chat(
+            # Send message via conversation-based chat
+            response = await self.api_client.chat_with_history(
                 spy_id=spy_id,
+                conversation_id=self.conversation_id,
                 message=message
             )
             
@@ -202,6 +223,10 @@ class MainScreen(Screen):
             self.notify("Please select a spy first", severity="warning")
             return
             
+        if not self.conversation_id:
+            self.notify("No active conversation. Please select a spy first.", severity="warning")
+            return
+            
         message = event.value.strip()
         if not message:
             return
@@ -217,9 +242,10 @@ class MainScreen(Screen):
             # Simulate network delay
             await asyncio.sleep(1)
             
-            # Get response from API
-            response = await self.api_client.chat(
+            # Get response from API using conversation-based chat
+            response = await self.api_client.chat_with_history(
                 spy_id=self.active_spy['id'],
+                conversation_id=self.conversation_id,
                 message=message
             )
             

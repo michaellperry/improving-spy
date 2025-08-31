@@ -1,4 +1,4 @@
-### Chat with a spy using codename
+### Chat with a spy using conversation-based system
 # @name getSpies
 GET http://localhost:8000/api/spies/
 Accept: application/json
@@ -7,9 +7,19 @@ Accept: application/json
 @spy_id = {{getSpies.response.body.$[0].id}}
 @spy_codename = {{getSpies.response.body.$[0].codename}}
 
-### Chat with a spy using codename
-# @name chatWithSpy
-POST http://localhost:8000/api/chat/007
+### Create a new conversation for a spy
+# @name createConversation
+POST http://localhost:8000/api/conversations
+Content-Type: application/x-www-form-urlencoded
+
+spy_id={{spy_id}}
+
+### 
+@conversation_id = {{createConversation.response.body.conversation_id}}
+
+### Chat with a spy using conversation context
+# @name chatWithConversation
+POST http://localhost:8000/api/chat/conversation/{{conversation_id}}
 Content-Type: application/json
 
 {
@@ -17,9 +27,9 @@ Content-Type: application/json
 }
 
 ### 
-# Chat with a spy using ID (alternative)
-# @name chatWithSpyById
-POST http://localhost:8000/api/chat/{{spy_id}}
+# Chat with another message in the same conversation
+# @name chatWithConversation2
+POST http://localhost:8000/api/chat/conversation/{{conversation_id}}
 Content-Type: application/json
 
 {

@@ -2,11 +2,9 @@
 
 ### 1. Create a new conversation for a spy
 POST http://localhost:8000/api/conversations
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "spy_id": "{{spy_id}}"
-}
+spy_id={{spy_id}}
 
 ### 2. Chat with conversation context (using conversation_id)
 POST http://localhost:8000/api/chat/conversation/{{conversation_id}}
@@ -24,15 +22,7 @@ Content-Type: application/json
   "message": "What did we just talk about?"
 }
 
-### 4. Legacy chat endpoint (still works for backward compatibility)
-POST http://localhost:8000/api/chat/{{spy_id}}
-Content-Type: application/json
-
-{
-  "message": "Hello from legacy endpoint"
-}
-
-### 5. Get conversation details
+### 4. Get conversation details
 GET http://localhost:8000/api/conversations/{{conversation_id}}
 
 ### Variables to set:

@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from sqlalchemy.orm import Session
 
 from ..services.agent import ChatAgent
@@ -51,11 +51,10 @@ def get_agent(spy_id: str, db: Session = Depends(get_db)) -> ChatAgent:
 
 @router.post("/conversations", status_code=status.HTTP_201_CREATED)
 def create_conversation(
-    conversation: ConversationCreate,
+    spy_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """Create a new conversation for a spy."""
-    spy_id = conversation.spy_id
     logger.info(f"Creating new conversation for spy_id: {spy_id}")
     
     try:
@@ -239,66 +238,6 @@ async def chat_with_conversation(
         raise
     except Exception as e:
         logger.error(f"Error in chat_with_conversation: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Error processing chat request: {str(e)}"
-        )
-
-@router.post("/chat/{spy_id}", response_model=ChatResponse)
-async def chat_with_spy(
-    spy_id: str, 
-    request: ChatRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    Chat with a spy agent.
-    
-    Each spy has exactly one active conversation. Messages are automatically
-    added to the spy's conversation history.
-    """
-    logger.info(f"Received chat request for spy_id: {spy_id}")
-    try:
-        # Initialize conversation repository
-        logger.info("Initializing conversation repository...")
-        conversation_repository = ConversationRepository(db)
-        logger.info("Conversation repository initialized")
-
-        try:
-            # Get the agent
-            logger.info(f"Getting agent for spy_id: {spy_id}")
-            agent = get_agent(spy_id, db)
-            logger.info("Agent initialized successfully")
-            
-            # Get the response from the agent
-            logger.info("Sending message to agent...")
-            result = await agent.chat(message=request.message)
-            logger.info("Received response from agent")
-            
-            # Return a simple response with the agent's reply
-            response = {
-                "spy_id": result.get("spy_id", ""),
-                "spy_name": result.get("spy_name", "Unknown"),
-                "message": request.message,
-                "response": result.get("response", ""),
-                "tool_calls": result.get("tool_calls", [])
-            }
-            logger.info("Sending response back to client")
-            return response
-            
-        except HTTPException as he:
-            logger.error(f"HTTP Exception in chat processing: {str(he)}")
-            raise
-        except Exception as e:
-            logger.error(f"Error in chat processing: {str(e)}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error processing chat: {str(e)}"
-            )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in chat_with_spy: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500, 
             detail=f"Error processing chat request: {str(e)}"
