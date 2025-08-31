@@ -527,7 +527,7 @@ def seed_travel_states(db):
         "id": "travel_state_001",
         "spy_id": "spy_001",
         "city_id": "vienna",  # Start in Vienna
-        "simulated_time": initial_time,
+        "time_utc": initial_time,
         "inventory": json.dumps({
             "passport": "Valid",
             "tickets": [],

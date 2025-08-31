@@ -40,7 +40,7 @@ class TravelService:
                 # Create default state if none exists
                 default_state = TravelStateCreate(
                     city_id="vienna",
-                    simulated_time=datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0),
+                    time_utc=datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0),
                     inventory={
                         "passport": "Valid",
                         "tickets": [],
@@ -200,8 +200,8 @@ class TravelService:
             
             min_transfer = prefs.get("min_transfer", 10)  # Default 10 minute transfer time
             
-            # Use spy's current simulated time as the earliest departure time
-            depart_after = current_state.simulated_time
+            # Use spy's current time as the earliest departure time
+            depart_after = current_state.time_utc
             
             # Get all available routes
             all_routes = self._find_all_routes(origin_id, dest_id, depart_after, min_transfer)
@@ -221,7 +221,7 @@ class TravelService:
                 "total_duration": best_route["total_duration"],
                 "departure_time": best_route["departure_time"].isoformat(),
                 "arrival_time": best_route["arrival_time"].isoformat(),
-                "spy_current_time": current_state.simulated_time.isoformat()
+                "spy_current_time": current_state.time_utc.isoformat()
             }
             
         except Exception as e:
@@ -275,11 +275,11 @@ class TravelService:
                     "error_message": f"Spy is in {current_state.city_id}, but service {service_id} departs from {schedule.origin_city_id}"
                 }
             
-            # Parse schedule times using spy's current simulated time as base
-            departure_time = self._parse_schedule_time(schedule.departure_time, current_state.simulated_time)
+            # Parse schedule times using spy's current time as base
+            departure_time = self._parse_schedule_time(schedule.departure_time, current_state.time_utc)
             
-            # Check if departure time has passed in the spy's simulated world
-            if current_state.simulated_time > departure_time + timedelta(minutes=5):  # 5 minute grace period
+            # Check if departure time has passed in the spy's timeline
+            if current_state.time_utc > departure_time + timedelta(minutes=5):  # 5 minute grace period
                 return {
                     "success": False,
                     "error_code": "MISSED_DEPARTURE",
@@ -294,7 +294,7 @@ class TravelService:
             travel_state_repo = TravelStateRepository(self.db)
             updated_state = travel_state_repo.update(spy_id, TravelStateUpdate(
                 city_id=schedule.destination_city_id,
-                simulated_time=arrival_time,
+                time_utc=arrival_time,
                 inventory={
                     "tickets": [f"Service {service_id}"],
                     "cash": "500 EUR",  # Keep existing cash
@@ -505,11 +505,11 @@ class TravelService:
                     logger.warning(f"Invalid city_id: {updates.city_id}")
                     return False
             
-            # Validate simulated_time if being updated
-            if updates.simulated_time:
+            # Validate time_utc if being updated
+            if updates.time_utc:
                 # Ensure time is not in the past (allow small buffer for timezone issues)
-                if updates.simulated_time < datetime.now(timezone.utc).replace(microsecond=0):
-                    logger.warning(f"Time cannot be in the past: {updates.simulated_time}")
+                if updates.time_utc < datetime.now(timezone.utc).replace(microsecond=0):
+                    logger.warning(f"Time cannot be in the past: {updates.time_utc}")
                     return False
             
             # Validate inventory if being updated
@@ -597,7 +597,7 @@ class TravelService:
                 return False
             
             # Check if time is valid
-            if state.simulated_time.tzinfo is None:
+            if state.time_utc.tzinfo is None:
                 logger.warning("Time must have timezone information")
                 return False
             
@@ -630,8 +630,8 @@ class TravelService:
         if updates.city_id is not None:
             new_state_data["city_id"] = updates.city_id
         
-        if updates.simulated_time is not None:
-            new_state_data["simulated_time"] = updates.simulated_time
+        if updates.time_utc is not None:
+            new_state_data["time_utc"] = updates.time_utc
         
         if updates.inventory is not None:
             # Merge inventory updates

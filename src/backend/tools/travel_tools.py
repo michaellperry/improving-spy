@@ -219,7 +219,7 @@ class TravelTools:
             db = next(get_db())
             travel_service = TravelService(db)
             
-            # Plan route using context spy's current simulated time
+            # Plan route using context spy's current time
             route_result = travel_service.plan_route(context_spy_id, origin_id, dest_id, prefs or {})
             
             if route_result["success"]:
@@ -309,7 +309,7 @@ class TravelTools:
             }
 
     @classmethod
-    def update_travel_state(cls, context_spy_id: str, city_id: str, simulated_time: datetime, 
+    def update_travel_state(cls, context_spy_id: str, city_id: str, time_utc: datetime, 
                            inventory_updates: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Update travel state for the context spy.
@@ -317,7 +317,7 @@ class TravelTools:
         Args:
             context_spy_id: Spy identifier from context (automatically bound)
             city_id: New city ID
-            simulated_time: New simulated time in the spy's world
+            time_utc: New time in UTC
             inventory_updates: Optional inventory updates
             
         Returns:
@@ -334,7 +334,7 @@ class TravelTools:
             from ..models import TravelStateUpdate
             updates = TravelStateUpdate(
                 city_id=city_id,
-                simulated_time=simulated_time,
+                time_utc=time_utc,
                 inventory=inventory_updates
             )
             
@@ -591,7 +591,7 @@ class TravelTools:
             },
             {
                 "name": "get_travel_state",
-                "description": "Get current travel state for the current spy including location, time, and inventory. Use this when you need to check where the spy is and what they have.",
+                "description": "Get current travel state for the current spy including location, time, and inventory. Use this when you need to check where the spy is, what time it is, and what they have.",
                 "function": lambda: cls.get_travel_state(context_spy_id),
                 "parameters": {
                     "type": "object",
@@ -602,7 +602,7 @@ class TravelTools:
             {
                 "name": "update_travel_state",
                 "description": "Update travel state for the current spy including location, time, and inventory. Use this when you need to change the spy's travel status.",
-                "function": lambda city_id, simulated_time, inventory_updates=None: cls.update_travel_state(context_spy_id, city_id, simulated_time, inventory_updates),
+                "function": lambda city_id, time_utc, inventory_updates=None: cls.update_travel_state(context_spy_id, city_id, time_utc, inventory_updates),
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -610,16 +610,16 @@ class TravelTools:
                             "type": "string",
                             "description": "New city ID"
                         },
-                        "simulated_time": {
+                        "time_utc": {
                             "type": "string",
-                            "description": "New simulated time in the spy's world (ISO 8601 format)"
+                            "description": "New time in UTC (ISO 8601 format)"
                         },
                         "inventory_updates": {
                             "type": "object",
                             "description": "Optional inventory updates"
                         }
                     },
-                    "required": ["city_id", "simulated_time"]
+                    "required": ["city_id", "time_utc"]
                 }
             },
             {

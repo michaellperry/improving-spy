@@ -38,7 +38,7 @@ class TravelStateModel(Base):
     id = Column(String, primary_key=True)
     spy_id = Column(String, ForeignKey("spies.id"), nullable=False)
     city_id = Column(String, ForeignKey("cities.id"), nullable=False)
-    simulated_time = Column(DateTime, nullable=False)  # Simulated time in spy's world
+    time_utc = Column(DateTime, nullable=False)  # Current time in UTC
     inventory = Column(Text, nullable=False)  # JSON-serialized inventory
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -104,19 +104,19 @@ class TrainSchedule(TrainScheduleBase):
 class TravelState(BaseModel):
     """Pydantic model for spy travel state"""
     city_id: str = Field(..., description="Current city ID")
-    simulated_time: datetime = Field(..., description="Current simulated time in the spy's world (not real clock time)")
+    time_utc: datetime = Field(..., description="Current time in UTC")
     inventory: Dict[str, Any] = Field(default_factory=dict, description="Travel inventory (tickets, passport, etc.)")
 
 class TravelStateCreate(BaseModel):
     """Pydantic model for creating travel state"""
     city_id: str
-    simulated_time: datetime
+    time_utc: datetime
     inventory: Optional[Dict[str, Any]] = None
 
 class TravelStateUpdate(BaseModel):
     """Pydantic model for updating travel state"""
     city_id: Optional[str] = None
-    simulated_time: Optional[datetime] = None
+    time_utc: Optional[datetime] = None
     inventory: Optional[Dict[str, Any]] = None
 
 class SpyBase(BaseModel):

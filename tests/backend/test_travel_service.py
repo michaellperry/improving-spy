@@ -37,7 +37,7 @@ class TestTravelService:
         """Sample travel state for testing."""
         return TravelState(
             city_id="vienna",
-            simulated_time=FIXED_TEST_TIME,
+            time_utc=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -53,7 +53,7 @@ class TestTravelService:
         
         assert result is not None
         assert result.city_id == "vienna"
-        assert result.simulated_time is not None
+        assert result.time_utc is not None
         assert result.inventory is not None
         assert "passport" in result.inventory
         assert "tickets" in result.inventory
@@ -422,19 +422,19 @@ class TestTravelService:
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == "munich"
-        assert result.simulated_time == sample_travel_state.simulated_time
+        assert result.time_utc == sample_travel_state.time_utc
         assert result.inventory == sample_travel_state.inventory
 
     def test_apply_updates_time_utc(self, sample_travel_state):
-        """Test applying simulated_time update."""
+        """Test applying time_utc update."""
         service = TravelService(Mock())
         
         new_time = FIXED_TEST_TIME + timedelta(hours=1)  # Use fixed time + offset
-        updates = TravelStateUpdate(simulated_time=new_time)
+        updates = TravelStateUpdate(time_utc=new_time)
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == sample_travel_state.city_id
-        assert result.simulated_time == new_time
+        assert result.time_utc == new_time
         assert result.inventory == sample_travel_state.inventory
 
     def test_apply_updates_inventory(self, sample_travel_state):
@@ -446,7 +446,7 @@ class TestTravelService:
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == sample_travel_state.city_id
-        assert result.simulated_time == sample_travel_state.simulated_time
+        assert result.time_utc == sample_travel_state.time_utc
         assert result.inventory["tickets"] == ["ICE123"]
         assert result.inventory["cash"] == "450 EUR"
         # Original inventory items should still be there
@@ -460,13 +460,13 @@ class TestTravelService:
         new_time = FIXED_TEST_TIME + timedelta(hours=2)  # Use fixed time + offset
         updates = TravelStateUpdate(
             city_id="munich",
-            simulated_time=new_time,
+            time_utc=new_time,
             inventory={"tickets": ["ICE123"]}
         )
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == "munich"
-        assert result.simulated_time == new_time
+        assert result.time_utc == new_time
         assert result.inventory["tickets"] == ["ICE123"]
         assert result.inventory["passport"] == "Valid"  # Original preserved
 

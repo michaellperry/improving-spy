@@ -32,7 +32,7 @@ class TestSimulatedTime:
             # Mock the create method to return a valid state
             mock_repo.create.return_value = TravelState(
                 city_id="vienna",
-                simulated_time=FIXED_8AM,
+                time_utc=FIXED_8AM,
                 inventory={
                     "passport": "Valid",
                     "tickets": [],
@@ -51,8 +51,8 @@ class TestSimulatedTime:
             # Verify result
             assert result is not None
             assert result.city_id == "vienna"
-            assert result.simulated_time.hour == 8
-            assert result.simulated_time.minute == 0
+            assert result.time_utc.hour == 8
+            assert result.time_utc.minute == 0
     
     def test_execute_travel_uses_simulated_time(self):
         """Test that travel execution uses simulated time, not real clock time."""
@@ -80,7 +80,7 @@ class TestSimulatedTime:
             current_time = FIXED_9AM
             mock_repo.get_by_spy_id.return_value = TravelState(
                 city_id="vienna",
-                simulated_time=current_time,
+                time_utc=current_time,
                 inventory={
                     "passport": "Valid",
                     "tickets": [],
@@ -92,7 +92,7 @@ class TestSimulatedTime:
             # Mock successful update
             updated_state = TravelState(
                 city_id="munich",
-                simulated_time=FIXED_14PM,
+                time_utc=FIXED_14PM,
                 inventory={
                     "tickets": ["Service ICE123"],
                     "cash": "500 EUR",
@@ -137,7 +137,7 @@ class TestSimulatedTime:
             current_time = FIXED_10AM
             mock_repo.get_by_spy_id.return_value = TravelState(
                 city_id="vienna",
-                simulated_time=current_time,
+                time_utc=current_time,
                 inventory={
                     "passport": "Valid",
                     "tickets": [],
@@ -179,7 +179,7 @@ class TestSimulatedTime:
             current_time = FIXED_9AM
             mock_repo.get_by_spy_id.return_value = TravelState(
                 city_id="vienna",
-                simulated_time=current_time,
+                time_utc=current_time,
                 inventory={
                     "passport": "Valid",
                     "tickets": [],
@@ -191,7 +191,7 @@ class TestSimulatedTime:
             # Mock successful update
             updated_state = TravelState(
                 city_id="munich",
-                simulated_time=FIXED_14PM,
+                time_utc=FIXED_14PM,
                 inventory={
                     "tickets": ["Service ICE123"],
                     "cash": "500 EUR",
@@ -234,7 +234,7 @@ class TestSimulatedTime:
             current_time = FIXED_9AM
             mock_repo.get_by_spy_id.return_value = TravelState(
                 city_id="vienna",
-                simulated_time=current_time,
+                time_utc=current_time,
                 inventory={
                     "passport": "Valid",
                     "tickets": [],
@@ -246,7 +246,7 @@ class TestSimulatedTime:
             # Mock successful update with progressed time
             updated_state = TravelState(
                 city_id="munich",
-                simulated_time=FIXED_14PM,  # 4 hours later
+                time_utc=FIXED_14PM,  # 4 hours later
                 inventory={
                     "tickets": ["Service ICE123"],
                     "cash": "500 EUR",

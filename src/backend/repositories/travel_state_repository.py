@@ -37,7 +37,7 @@ class TravelStateRepository:
             # Convert database model to Pydantic model
             return TravelState(
                 city_id=db_travel_state.city_id,
-                simulated_time=db_travel_state.simulated_time,
+                time_utc=db_travel_state.time_utc,
                 inventory=json.loads(db_travel_state.inventory)
             )
             
@@ -61,7 +61,7 @@ class TravelStateRepository:
                 id=f"travel_state_{spy_id}",
                 spy_id=spy_id,
                 city_id=travel_state.city_id,
-                simulated_time=travel_state.simulated_time,
+                time_utc=travel_state.time_utc,
                 inventory=json.dumps(travel_state.inventory or {})
             )
             
@@ -73,7 +73,7 @@ class TravelStateRepository:
             
             return TravelState(
                 city_id=db_travel_state.city_id,
-                simulated_time=db_travel_state.simulated_time,
+                time_utc=db_travel_state.time_utc,
                 inventory=json.loads(db_travel_state.inventory)
             )
             
@@ -106,8 +106,8 @@ class TravelStateRepository:
             if updates.city_id is not None:
                 db_travel_state.city_id = updates.city_id
             
-            if updates.simulated_time is not None:
-                db_travel_state.simulated_time = updates.simulated_time
+            if updates.time_utc is not None:
+                db_travel_state.time_utc = updates.time_utc
             
             if updates.inventory is not None:
                 # Merge with existing inventory
@@ -125,7 +125,7 @@ class TravelStateRepository:
             
             return TravelState(
                 city_id=db_travel_state.city_id,
-                simulated_time=db_travel_state.simulated_time,
+                time_utc=db_travel_state.time_utc,
                 inventory=json.loads(db_travel_state.inventory)
             )
             
@@ -177,7 +177,7 @@ class TravelStateRepository:
             return [
                 TravelState(
                     city_id=ts.city_id,
-                    simulated_time=ts.simulated_time,
+                    time_utc=ts.time_utc,
                     inventory=json.loads(ts.inventory)
                 )
                 for ts in db_travel_states
@@ -205,7 +205,7 @@ class TravelStateRepository:
             return [
                 TravelState(
                     city_id=ts.city_id,
-                    simulated_time=ts.simulated_time,
+                    time_utc=ts.time_utc,
                     inventory=json.loads(ts.inventory)
                 )
                 for ts in db_travel_states

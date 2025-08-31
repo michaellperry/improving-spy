@@ -26,7 +26,7 @@ class TestTravelTools:
         service = Mock()
         service.get_travel_state.return_value = TravelState(
             city_id="vienna",
-            simulated_time=FIXED_TEST_TIME,
+            time_utc=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -41,7 +41,7 @@ class TestTravelTools:
         """Sample travel state for testing."""
         return TravelState(
             city_id="vienna",
-            simulated_time=FIXED_TEST_TIME,
+            time_utc=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -142,7 +142,7 @@ class TestTravelTools:
             # Mock successful update
             updated_state = TravelState(
                 city_id="munich",
-                simulated_time=FIXED_TEST_TIME,
+                time_utc=FIXED_TEST_TIME,
                 inventory={
                     "passport": "Valid",
                     "tickets": ["ICE123"],
@@ -155,7 +155,7 @@ class TestTravelTools:
             result = TravelTools.update_travel_state(
                 "spy_123",  # context_spy_id
                 city_id="munich",
-                simulated_time=FIXED_TEST_TIME,
+                time_utc=FIXED_TEST_TIME,
                 inventory_updates={"tickets": ["ICE123"], "cash": "450 EUR"}
             )
             
@@ -179,7 +179,7 @@ class TestTravelTools:
             result = TravelTools.update_travel_state(
                 "spy_123",  # context_spy_id
                 city_id="invalid_city",
-                simulated_time=FIXED_TEST_TIME
+                time_utc=FIXED_TEST_TIME
             )
             
             assert result["response"] == "Failed to update travel state for spy spy_123"
@@ -195,7 +195,7 @@ class TestTravelTools:
             result = TravelTools.update_travel_state(
                 "spy_123",  # context_spy_id
                 city_id="munich",
-                simulated_time=FIXED_TEST_TIME
+                time_utc=FIXED_TEST_TIME
             )
             
             assert "Error updating travel state" in result["response"]
@@ -418,7 +418,7 @@ class TestTravelTools:
         assert "spy_id" not in update_tool["parameters"]["properties"]
         assert "spy_id" not in update_tool["parameters"]["required"]
         assert "city_id" in update_tool["parameters"]["properties"]
-        assert "simulated_time" in update_tool["parameters"]["properties"]
+        assert "time_utc" in update_tool["parameters"]["properties"]
         assert "inventory_updates" in update_tool["parameters"]["properties"]
         
         # Test get_train_schedules parameters
