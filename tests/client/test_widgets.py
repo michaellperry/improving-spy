@@ -30,16 +30,16 @@ class TestSpySelector:
     def test_init(self):
         """Test SpySelector initialization"""
         on_select = MagicMock()
-        selector = SpySelector(SAMPLE_SPIES, on_select)
+        selector = SpySelector(SAMPLE_SPIES, id="test-selector")
         
         # Check that attributes are set correctly
         assert selector.spies == SAMPLE_SPIES
-        assert selector.on_select == on_select
+        assert selector.id == "test-selector"
     
     def test_compose(self):
         """Test SpySelector compose method creates correct UI elements"""
         on_select = MagicMock()
-        selector = SpySelector(SAMPLE_SPIES, on_select)
+        selector = SpySelector(SAMPLE_SPIES, id="test-selector")
         
         # This is a simple test that doesn't actually render the widget
         # In a real test, we would use the Textual test framework to render and check DOM

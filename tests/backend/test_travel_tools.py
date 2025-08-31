@@ -175,7 +175,8 @@ class TestTravelTools:
             
             result = TravelTools.update_travel_state(
                 spy_id="spy_123",
-                city_id="invalid_city"
+                city_id="invalid_city",
+                time_utc=datetime.now(timezone.utc)
             )
             
             assert result["response"] == "Failed to update travel state for spy spy_123"
@@ -190,7 +191,8 @@ class TestTravelTools:
             
             result = TravelTools.update_travel_state(
                 spy_id="spy_123",
-                city_id="munich"
+                city_id="munich",
+                time_utc=datetime.now(timezone.utc)
             )
             
             assert "Error updating travel state" in result["response"]
@@ -372,11 +374,15 @@ class TestTravelTools:
         """Test that get_tools returns the correct tool structure."""
         tools = TravelTools.get_tools()
         
-        assert len(tools) == 5  # Should have 5 tools
+        assert len(tools) == 9  # Should have 9 tools
         
         # Check tool names
         tool_names = [tool["name"] for tool in tools]
         expected_names = [
+            "get_map",
+            "get_schedule",
+            "travel",
+            "plan_route",
             "get_travel_state",
             "update_travel_state", 
             "get_available_cities",

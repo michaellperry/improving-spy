@@ -279,7 +279,7 @@ class SpyCommandConsole(App):
                 
                 # Initialize chat UI
                 logger.debug("Setting up chat UI")
-                self.setup_chat_ui()
+                await self.setup_ui()
                 
                 # Connect to WebSocket in the background
                 logger.debug("Starting WebSocket connection")
