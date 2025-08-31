@@ -19,40 +19,29 @@ router = APIRouter(prefix="/api", tags=["Chat"])
 
 # Initialize repositories
 
-def is_valid_uuid(val):
-    try:
-        uuid.UUID(str(val))
-        return True
-    except ValueError:
-        return False
-
 # Dependency that provides a ChatAgent instance for the spy.
-def get_agent(spy_identifier: str, db: Session = Depends(get_db)) -> ChatAgent:
+def get_agent(spy_id: str, db: Session = Depends(get_db)) -> ChatAgent:
     """Dependency that provides a ChatAgent instance for the spy.
     
     Args:
-        spy_identifier: Either a spy's UUID or codename
+        spy_id: The spy's ID (primary key from database)
     """
+    logger.info(f"Getting agent for spy_id: {spy_id}")
     repo = SpyRepository(db)
     
-    # First try to get by ID (UUID)
-    if is_valid_uuid(spy_identifier):
-        spy = repo.get(spy_identifier)
-    else:
-        # If not a valid UUID, try to find by codename
-        spy = repo.get_by_codename(spy_identifier)
+    # Get spy by ID (primary key)
+    spy = repo.get(spy_id)
+    logger.info(f"Result from repo.get: {spy}")
     
     if not spy:
-        raise HTTPException(status_code=404, detail=f"Spy not found: {spy_identifier}")
+        logger.error(f"Spy not found for ID: {spy_id}")
+        raise HTTPException(status_code=404, detail=f"Spy not found: {spy_id}")
     
-    # Convert SQLAlchemy model to dict to avoid passing the session
-    spy_dict = {
-        'id': str(spy.id),  # Ensure id is a string as expected by Pydantic
-        'name': spy.name,
-        'codename': spy.codename,
-        'biography': spy.biography,
-        'specialty': spy.specialty
-    }
+    logger.info(f"Found spy: {spy}")
+    
+    # Convert Pydantic model to dict for ChatAgent
+    spy_dict = spy.model_dump()
+    logger.info(f"Spy dict: {spy_dict}")
     
     return ChatAgent(spy_dict)
 

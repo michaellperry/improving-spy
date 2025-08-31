@@ -101,7 +101,6 @@ Implementation plan for the Agentic AI Demo Canvas: Spy on a Train, which demons
 - [x] Implement `get_schedule` tool for train service lookup  
 - [x] Implement `travel(service_id)` tool with state updates
 - [x] Add comprehensive error handling for travel scenarios
-- [ ] Implement tool response caching for performance
 
 **Current Status**: Core tools in `travel_tools.py` are implemented but corresponding service methods in `travel_service.py` are missing:
 - ✅ `get_map` - Tool implemented, service method missing
@@ -126,7 +125,6 @@ Implementation plan for the Agentic AI Demo Canvas: Spy on a Train, which demons
 **Testing Approach**:
 - [x] Unit tests for each tool function with various inputs
 - [ ] Integration tests for tool interactions and state updates
-- [ ] Performance tests: Verify 2-second response time requirement
 - [ ] Manual validation: Test each tool through AI agent interface
 - [ ] Error scenario tests: Test missed connections, invalid services
 
