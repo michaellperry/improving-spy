@@ -299,71 +299,12 @@ class TravelTools:
                 }
                 
         except Exception as e:
-            error_msg = f"Error retrieving travel state: {str(e)}"
+            error_msg = f"Error getting travel state: {str(e)}"
             logger.error(f"{error_msg} - {type(e).__name__}: {str(e)}")
             return {
-                "response": f"Error retrieving travel state: {str(e)}",
+                "response": f"Error getting travel state: {str(e)}",
                 "spy_id": context_spy_id,
                 "travel_state": None,
-                "tool_calls": []
-            }
-
-    @classmethod
-    def update_travel_state(cls, context_spy_id: str, city_id: str, time_utc: datetime, 
-                           inventory_updates: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        Update travel state for the context spy.
-        
-        Args:
-            context_spy_id: Spy identifier from context (automatically bound)
-            city_id: New city ID
-            time_utc: New time in UTC
-            inventory_updates: Optional inventory updates
-            
-        Returns:
-            Dict containing update result
-        """
-        logger.debug(f"Updating travel state for spy: {context_spy_id}")
-        
-        try:
-            # Get database session
-            db = next(get_db())
-            travel_service = TravelService(db)
-            
-            # Create update object
-            from ..models import TravelStateUpdate
-            updates = TravelStateUpdate(
-                city_id=city_id,
-                time_utc=time_utc,
-                inventory=inventory_updates
-            )
-            
-            # Update travel state using context spy ID
-            updated_state = travel_service.update_travel_state(context_spy_id, updates)
-            
-            if updated_state:
-                return {
-                    "response": f"Successfully updated travel state for spy {context_spy_id}",
-                    "spy_id": context_spy_id,
-                    "success": True,
-                    "travel_state": updated_state.model_dump(),
-                    "tool_calls": []
-                }
-            else:
-                return {
-                    "response": f"Failed to update travel state for spy {context_spy_id}",
-                    "spy_id": context_spy_id,
-                    "success": False,
-                    "tool_calls": []
-                }
-                
-        except Exception as e:
-            error_msg = f"Error updating travel state: {str(e)}"
-            logger.error(f"{error_msg} - {type(e).__name__}: {str(e)}")
-            return {
-                "response": f"Error updating travel state: {str(e)}",
-                "spy_id": context_spy_id,
-                "success": False,
                 "tool_calls": []
             }
 
@@ -549,7 +490,7 @@ class TravelTools:
             },
             {
                 "name": "travel",
-                "description": "Execute travel on a specific service, updating the current spy's state. Use this when you want to travel on a train service and update the spy's location and time.",
+                "description": "Execute travel on a specific service. Use this when you want to travel on a train service. Your date and time will be updated.",
                 "function": lambda service_id: cls.travel(context_spy_id, service_id),
                 "parameters": {
                     "type": "object",
@@ -564,7 +505,7 @@ class TravelTools:
             },
             {
                 "name": "plan_route",
-                "description": "Generate guaranteed valid travel itineraries between cities for the current spy. Use this when you need to plan a complete journey with multiple connections.",
+                "description": "Generate guaranteed valid travel itineraries between cities. Use this when you need to plan a complete journey with multiple connections.",
                 "function": lambda origin_id, dest_id, depart_after, prefs=None: cls.plan_route(context_spy_id, origin_id, dest_id, depart_after, prefs),
                 "parameters": {
                     "type": "object",
@@ -591,35 +532,12 @@ class TravelTools:
             },
             {
                 "name": "get_travel_state",
-                "description": "Get current travel state for the current spy including location, time, and inventory. Use this when you need to check where the spy is, what time it is, and what they have.",
+                "description": "Get your current time, location, and inventory. Use this when you need to check where you are, what time it is, and what you have.",
                 "function": lambda: cls.get_travel_state(context_spy_id),
                 "parameters": {
                     "type": "object",
                     "properties": {},
                     "required": []
-                }
-            },
-            {
-                "name": "update_travel_state",
-                "description": "Update travel state for the current spy including location, time, and inventory. Use this when you need to change the spy's travel status.",
-                "function": lambda city_id, time_utc, inventory_updates=None: cls.update_travel_state(context_spy_id, city_id, time_utc, inventory_updates),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "city_id": {
-                            "type": "string",
-                            "description": "New city ID"
-                        },
-                        "time_utc": {
-                            "type": "string",
-                            "description": "New time in UTC (ISO 8601 format)"
-                        },
-                        "inventory_updates": {
-                            "type": "object",
-                            "description": "Optional inventory updates"
-                        }
-                    },
-                    "required": ["city_id", "time_utc"]
                 }
             },
             {

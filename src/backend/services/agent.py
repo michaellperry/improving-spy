@@ -118,7 +118,7 @@ You have access to tools that can help you answer questions about missions and t
 
 IMPORTANT RULES FOR TOOL USAGE:
 1. ONLY use the get_mission_context tool if the user explicitly mentions a specific mission ID.
-2. Use travel tools (get_travel_state, update_travel_state, get_available_cities, get_train_schedules, plan_journey) when the user asks about travel, locations, or journey planning.
+2. Use travel tools (get_travel_state, get_available_cities, get_train_schedules, plan_journey) when the user asks about travel, locations, or journey planning.
 3. If the user asks a general question without mentioning a specific mission ID or travel request, DO NOT use any tools.
 4. If you need mission context but the user hasn't provided an ID, ask them to specify which mission they're referring to.
 5. Never make assumptions about mission IDs - only use exact matches.

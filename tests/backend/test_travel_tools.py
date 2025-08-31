@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 from typing import Dict, Any
 
-from src.backend.tools.travel_tools import TravelTools, GetTravelStateRequest, UpdateTravelStateRequest
+from src.backend.tools.travel_tools import TravelTools, GetTravelStateRequest
 from src.backend.tools.travel_tools import GetCitiesRequest, GetTrainSchedulesRequest, PlanJourneyRequest
 from src.backend.models import TravelState, TravelStateUpdate
 
@@ -126,81 +126,9 @@ class TestTravelTools:
             
             result = TravelTools.get_travel_state("spy_789")
             
-            assert "Error retrieving travel state" in result["response"]
+            assert "Error getting travel state" in result["response"]
             assert result["spy_id"] == "spy_789"
             assert result["travel_state"] is None
-            assert result["tool_calls"] == []
-
-    def test_update_travel_state_success(self, mock_db_session, mock_travel_service):
-        """Test successful travel state update."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
-            
-            mock_get_db.return_value = iter([mock_db_session])
-            mock_service_class.return_value = mock_travel_service
-            
-            # Mock successful update
-            updated_state = TravelState(
-                city_id="munich",
-                time_utc=FIXED_TEST_TIME,
-                inventory={
-                    "passport": "Valid",
-                    "tickets": ["ICE123"],
-                    "cash": "450 EUR",
-                    "equipment": ["disguise", "radio"]
-                }
-            )
-            mock_travel_service.update_travel_state.return_value = updated_state
-            
-            result = TravelTools.update_travel_state(
-                "spy_123",  # context_spy_id
-                city_id="munich",
-                time_utc=FIXED_TEST_TIME,
-                inventory_updates={"tickets": ["ICE123"], "cash": "450 EUR"}
-            )
-            
-            assert result["response"] == "Successfully updated travel state for spy spy_123"
-            assert result["spy_id"] == "spy_123"
-            assert result["success"] is True
-            assert result["travel_state"]["city_id"] == "munich"
-            assert result["tool_calls"] == []
-
-    def test_update_travel_state_failure(self, mock_db_session, mock_travel_service):
-        """Test travel state update failure."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
-            
-            mock_get_db.return_value = iter([mock_db_session])
-            mock_service_class.return_value = mock_travel_service
-            
-            # Mock failed update
-            mock_travel_service.update_travel_state.return_value = None
-            
-            result = TravelTools.update_travel_state(
-                "spy_123",  # context_spy_id
-                city_id="invalid_city",
-                time_utc=FIXED_TEST_TIME
-            )
-            
-            assert result["response"] == "Failed to update travel state for spy spy_123"
-            assert result["spy_id"] == "spy_123"
-            assert result["success"] is False
-            assert result["tool_calls"] == []
-
-    def test_update_travel_state_error_handling(self, mock_db_session):
-        """Test error handling in travel state update."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db:
-            mock_get_db.side_effect = Exception("Database connection failed")
-            
-            result = TravelTools.update_travel_state(
-                "spy_123",  # context_spy_id
-                city_id="munich",
-                time_utc=FIXED_TEST_TIME
-            )
-            
-            assert "Error updating travel state" in result["response"]
-            assert result["spy_id"] == "spy_123"
-            assert result["success"] is False
             assert result["tool_calls"] == []
 
     def test_get_available_cities_success(self, mock_db_session, sample_cities):
@@ -377,7 +305,7 @@ class TestTravelTools:
         """Test that get_tools returns the correct tool structure."""
         tools = TravelTools.get_tools("test_spy_123")
         
-        assert len(tools) == 9  # Should have 9 tools
+        assert len(tools) == 8  # Should have 8 tools
         
         # Check tool names
         tool_names = [tool["name"] for tool in tools]
@@ -387,7 +315,6 @@ class TestTravelTools:
             "travel",
             "plan_route",
             "get_travel_state",
-            "update_travel_state", 
             "get_available_cities",
             "get_train_schedules",
             "plan_journey"
@@ -413,14 +340,6 @@ class TestTravelTools:
         assert "spy_id" not in travel_state_tool["parameters"]["properties"]
         assert "spy_id" not in travel_state_tool["parameters"]["required"]
         
-        # Test update_travel_state parameters (no spy_id needed - bound to context)
-        update_tool = next(t for t in tools if t["name"] == "update_travel_state")
-        assert "spy_id" not in update_tool["parameters"]["properties"]
-        assert "spy_id" not in update_tool["parameters"]["required"]
-        assert "city_id" in update_tool["parameters"]["properties"]
-        assert "time_utc" in update_tool["parameters"]["properties"]
-        assert "inventory_updates" in update_tool["parameters"]["properties"]
-        
         # Test get_train_schedules parameters
         schedules_tool = next(t for t in tools if t["name"] == "get_train_schedules")
         assert "origin_city_id" in schedules_tool["parameters"]["properties"]
@@ -436,17 +355,6 @@ class TestTravelToolsRequestModels:
         """Test GetTravelStateRequest model."""
         request = GetTravelStateRequest()
         # No fields needed - spy_id is bound to context
-    
-    def test_update_travel_state_request(self):
-        """Test UpdateTravelStateRequest model."""
-        request = UpdateTravelStateRequest(
-            city_id="munich",
-            time_utc=FIXED_TEST_TIME,
-            inventory_updates={"tickets": ["ICE123"]}
-        )
-        assert request.city_id == "munich"
-        assert request.time_utc is not None
-        assert request.inventory_updates == {"tickets": ["ICE123"]}
     
     def test_get_cities_request(self):
         """Test GetCitiesRequest model."""
