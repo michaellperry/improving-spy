@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import logging
 
 # Import from our own models
-from ..models import Base, CityModel, TrainScheduleModel, SpyModel
+from ..models import Base, CityModel, TrainScheduleModel, SpyModel, TravelStateModel
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -513,6 +513,35 @@ def seed_sample_spy(db):
     logger.info("Seeded sample spy: Alexandra Petrov (Shadow)")
     db.commit()
 
+def seed_travel_states(db):
+    """Seed initial travel states for spies."""
+    import json
+    
+    # Get current date and set initial time to 08:00
+    from datetime import date
+    current_date = date.today()
+    initial_time = datetime.combine(current_date, datetime.min.time().replace(hour=8, minute=0))
+    
+    # Create initial travel state for the sample spy
+    travel_state_data = {
+        "id": "travel_state_001",
+        "spy_id": "spy_001",
+        "city_id": "vienna",  # Start in Vienna
+        "simulated_time": initial_time,
+        "inventory": json.dumps({
+            "passport": "Valid",
+            "tickets": [],
+            "cash": "500 EUR",
+            "equipment": ["disguise", "radio"]
+        })
+    }
+    
+    travel_state = TravelStateModel(**travel_state_data)
+    db.add(travel_state)
+    
+    logger.info("Seeded initial travel state for spy_001 in Vienna")
+    db.commit()
+
 # Initialize DB
 def init_db():
     """Initialize database with all tables and seed data."""
@@ -531,6 +560,7 @@ def init_db():
             seed_cities(db)
             seed_train_schedules(db)
             seed_sample_spy(db)
+            seed_travel_states(db)
             logger.info("Database seeded with initial data")
         else:
             logger.info("Database already contains data, skipping seeding")

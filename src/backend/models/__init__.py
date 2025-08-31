@@ -7,7 +7,7 @@ from datetime import datetime
 
 # SQLAlchemy ORM Base
 Base = declarative_base()
-__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse', 'City', 'CityModel', 'TrainSchedule', 'TrainScheduleModel', 'TravelState', 'TravelStateCreate', 'TravelStateUpdate']
+__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse', 'City', 'CityModel', 'TrainSchedule', 'TrainScheduleModel', 'TravelState', 'TravelStateCreate', 'TravelStateUpdate', 'TravelStateModel']
 
 # Database Model: City
 class CityModel(Base):
@@ -30,6 +30,18 @@ class TrainScheduleModel(Base):
     departure_time = Column(String, nullable=False)  # "HH:MM" format
     arrival_time = Column(String, nullable=False)   # "HH:MM" format
     days_of_week = Column(String, nullable=False)  # "1,2,3,4,5,6,7" for daily service
+
+# Database Model: Travel State
+class TravelStateModel(Base):
+    __tablename__ = "travel_states"
+
+    id = Column(String, primary_key=True)
+    spy_id = Column(String, ForeignKey("spies.id"), nullable=False)
+    city_id = Column(String, ForeignKey("cities.id"), nullable=False)
+    simulated_time = Column(DateTime, nullable=False)  # Simulated time in spy's world
+    inventory = Column(Text, nullable=False)  # JSON-serialized inventory
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Database Model: Spy (SQLAlchemy)
 class SpyModel(Base):
@@ -92,19 +104,19 @@ class TrainSchedule(TrainScheduleBase):
 class TravelState(BaseModel):
     """Pydantic model for spy travel state"""
     city_id: str = Field(..., description="Current city ID")
-    time_utc: datetime = Field(..., description="Current time in UTC")
+    simulated_time: datetime = Field(..., description="Current simulated time in the spy's world (not real clock time)")
     inventory: Dict[str, Any] = Field(default_factory=dict, description="Travel inventory (tickets, passport, etc.)")
 
 class TravelStateCreate(BaseModel):
     """Pydantic model for creating travel state"""
     city_id: str
-    time_utc: datetime
+    simulated_time: datetime
     inventory: Optional[Dict[str, Any]] = None
 
 class TravelStateUpdate(BaseModel):
     """Pydantic model for updating travel state"""
     city_id: Optional[str] = None
-    time_utc: Optional[datetime] = None
+    simulated_time: Optional[datetime] = None
     inventory: Optional[Dict[str, Any]] = None
 
 class SpyBase(BaseModel):

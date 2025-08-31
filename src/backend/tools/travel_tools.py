@@ -23,6 +23,7 @@ class GetScheduleRequest(BaseModel):
 
 class TravelRequest(BaseModel):
     """Request model for executing travel on a service."""
+    spy_id: str = Field(..., description="Spy identifier")
     service_id: str = Field(..., description="Service identifier to travel on")
 
 class PlanRouteRequest(BaseModel):
@@ -142,17 +143,18 @@ class TravelTools:
             }
     
     @classmethod
-    def travel(cls, service_id: str) -> Dict[str, Any]:
+    def travel(cls, spy_id: str, service_id: str) -> Dict[str, Any]:
         """
         Execute travel on a specific service, updating spy state.
         
         Args:
+            spy_id: Spy identifier
             service_id: Service identifier to travel on
             
         Returns:
             Dict containing travel result and updated state
         """
-        logger.debug(f"Executing travel on service: {service_id}")
+        logger.debug(f"Executing travel on service: {service_id} for spy: {spy_id}")
         
         try:
             # Get database session
@@ -160,12 +162,13 @@ class TravelTools:
             travel_service = TravelService(db)
             
             # Execute travel
-            result = travel_service.execute_travel(service_id)
+            result = travel_service.execute_travel(spy_id, service_id)
             
             if result["success"]:
                 return {
                     "response": f"Successfully traveled on service {service_id}",
                     "success": True,
+                    "spy_id": spy_id,
                     "service_id": service_id,
                     "travel_result": result["travel_result"],
                     "updated_state": result["updated_state"],
@@ -175,6 +178,7 @@ class TravelTools:
                 return {
                     "response": f"Travel failed on service {service_id}: {result['error_code']}",
                     "success": False,
+                    "spy_id": spy_id,
                     "service_id": service_id,
                     "error_code": result["error_code"],
                     "error_message": result["error_message"],
@@ -187,6 +191,7 @@ class TravelTools:
             return {
                 "response": f"Error executing travel: {str(e)}",
                 "success": False,
+                "spy_id": spy_id,
                 "service_id": service_id,
                 "error_code": "TRAVEL_ERROR",
                 "error_message": str(e),
@@ -194,62 +199,50 @@ class TravelTools:
             }
     
     @classmethod
-    def plan_route(cls, origin_id: str, dest_id: str, depart_after: str, 
+    def plan_route(cls, spy_id: str, origin_id: str, dest_id: str, depart_after: str, 
                    prefs: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Generate guaranteed valid travel itineraries.
         
         Args:
+            spy_id: The ID of the spy planning the route
             origin_id: Starting city
             dest_id: Destination city
-            depart_after: Earliest departure time (ISO 8601)
+            depart_after: Earliest departure time (ISO 8601) - deprecated, now uses spy's current time
             prefs: Travel preferences including min_transfer time
             
         Returns:
             Dict containing planned route itinerary
         """
-        logger.debug(f"Planning route from {origin_id} to {dest_id}")
+        logger.debug(f"Planning route from {origin_id} to {dest_id} for spy: {spy_id}")
         
         try:
             # Get database session
             db = next(get_db())
             travel_service = TravelService(db)
             
-            # Parse departure time
-            try:
-                depart_time = datetime.fromisoformat(depart_after.replace('Z', '+00:00'))
-            except ValueError:
-                return {
-                    "response": "Invalid departure time format. Use ISO 8601 format (e.g., 2025-08-30T08:00:00Z)",
-                    "success": False,
-                    "origin_id": origin_id,
-                    "dest_id": dest_id,
-                    "depart_after": depart_after,
-                    "itinerary": None,
-                    "tool_calls": []
-                }
-            
-            # Plan route
-            route_result = travel_service.plan_route(origin_id, dest_id, depart_time, prefs or {})
+            # Plan route using spy's current simulated time
+            route_result = travel_service.plan_route(spy_id, origin_id, dest_id, prefs or {})
             
             if route_result["success"]:
                 return {
                     "response": f"Route planned successfully from {origin_id} to {dest_id}",
                     "success": True,
+                    "spy_id": spy_id,
                     "origin_id": origin_id,
                     "dest_id": dest_id,
-                    "depart_after": depart_after,
                     "itinerary": route_result["itinerary"],
                     "total_duration": route_result["total_duration"],
+                    "spy_current_time": route_result.get("spy_current_time"),
                     "tool_calls": []
                 }
             else:
                 return {
                     "response": f"Route planning failed: {route_result['error_message']}",
                     "success": False,
+                    "spy_id": spy_id,
                     "origin_id": origin_id,
                     "dest_id": dest_id,
-                    "depart_after": depart_after,
                     "itinerary": None,
                     "error_message": route_result["error_message"],
                     "tool_calls": []
@@ -261,9 +254,9 @@ class TravelTools:
             return {
                 "response": f"Error planning route: {str(e)}",
                 "success": False,
+                "spy_id": spy_id,
                 "origin_id": origin_id,
                 "dest_id": dest_id,
-                "depart_after": depart_after,
                 "itinerary": None,
                 "error_message": str(e),
                 "tool_calls": []
@@ -318,7 +311,7 @@ class TravelTools:
             }
 
     @classmethod
-    def update_travel_state(cls, spy_id: str, city_id: str, time_utc: datetime, 
+    def update_travel_state(cls, spy_id: str, city_id: str, simulated_time: datetime, 
                            inventory_updates: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Update travel state for a spy.
@@ -326,7 +319,7 @@ class TravelTools:
         Args:
             spy_id: Spy identifier
             city_id: New city ID
-            time_utc: New time in UTC
+            simulated_time: New simulated time in the spy's world
             inventory_updates: Optional inventory updates
             
         Returns:
@@ -343,7 +336,7 @@ class TravelTools:
             from ..models import TravelStateUpdate
             updates = TravelStateUpdate(
                 city_id=city_id,
-                time_utc=time_utc,
+                simulated_time=simulated_time,
                 inventory=inventory_updates
             )
             
@@ -556,12 +549,16 @@ class TravelTools:
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "spy_id": {
+                            "type": "string",
+                            "description": "Spy identifier"
+                        },
                         "service_id": {
                             "type": "string",
                             "description": "Service identifier to travel on"
                         }
                     },
-                    "required": ["service_id"]
+                    "required": ["spy_id", "service_id"]
                 }
             },
             {
@@ -571,6 +568,10 @@ class TravelTools:
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "spy_id": {
+                            "type": "string",
+                            "description": "The ID of the spy planning the route"
+                        },
                         "origin_id": {
                             "type": "string",
                             "description": "Starting city"
@@ -588,7 +589,7 @@ class TravelTools:
                             "description": "Travel preferences including min_transfer time"
                         }
                     },
-                    "required": ["origin_id", "dest_id", "depart_after"]
+                    "required": ["spy_id", "origin_id", "dest_id", "depart_after"]
                 }
             },
             {
@@ -621,16 +622,16 @@ class TravelTools:
                             "type": "string",
                             "description": "New city ID"
                         },
-                        "time_utc": {
+                        "simulated_time": {
                             "type": "string",
-                            "description": "New time in UTC (ISO 8601 format)"
+                            "description": "New simulated time in the spy's world (ISO 8601 format)"
                         },
                         "inventory_updates": {
                             "type": "object",
                             "description": "Optional inventory updates"
                         }
                     },
-                    "required": ["spy_id", "city_id", "time_utc"]
+                    "required": ["spy_id", "city_id", "simulated_time"]
                 }
             },
             {

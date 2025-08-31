@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..models import TravelState, TravelStateCreate, TravelStateUpdate, CityModel, TrainScheduleModel
 from ..core.database import get_db
+from ..repositories.travel_state_repository import TravelStateRepository
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,21 +29,29 @@ class TravelService:
             TravelState object or None if not found
         """
         try:
-            # For now, we'll return a default state since travel_state isn't stored in DB yet
-            # This will be enhanced when we add travel_state to the SpyModel
             logger.debug(f"Getting travel state for spy: {spy_id}")
             
-            # Return default state for demonstration
-            return TravelState(
-                city_id="vienna",
-                time_utc=datetime.now(timezone.utc),
-                inventory={
-                    "passport": "Valid",
-                    "tickets": [],
-                    "cash": "500 EUR",
-                    "equipment": ["disguise", "radio"]
-                }
-            )
+            # Use repository to get travel state from database
+            travel_state_repo = TravelStateRepository(self.db)
+            travel_state = travel_state_repo.get_by_spy_id(spy_id)
+            
+            if not travel_state:
+                logger.debug(f"No travel state found for spy {spy_id}, creating default state")
+                # Create default state if none exists
+                default_state = TravelStateCreate(
+                    city_id="vienna",
+                    simulated_time=datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0),
+                    inventory={
+                        "passport": "Valid",
+                        "tickets": [],
+                        "cash": "500 EUR",
+                        "equipment": ["disguise", "radio"]
+                    }
+                )
+                travel_state = travel_state_repo.create(spy_id, default_state)
+            
+            return travel_state
+            
         except Exception as e:
             logger.error(f"Error getting travel state for spy {spy_id}: {str(e)}")
             return None
@@ -157,24 +166,42 @@ class TravelService:
             return []
 
 
-    def plan_route(self, origin_id: str, dest_id: str, depart_after: datetime, 
+    def plan_route(self, spy_id: str, origin_id: str, dest_id: str, 
                 prefs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate guaranteed valid travel itineraries.
         
         Args:
+            spy_id: The ID of the spy planning the route
             origin_id: Starting city
             dest_id: Destination city
-            depart_after: Earliest departure time
             prefs: Travel preferences including min_transfer time
             
         Returns:
             Dict containing planned route itinerary
         """
         try:
-            logger.info(f"Planning route from {origin_id} to {dest_id}")
+            logger.info(f"Planning route from {origin_id} to {dest_id} for spy {spy_id}")
+            
+            # Get spy's current travel state
+            current_state = self.get_travel_state(spy_id)
+            if not current_state:
+                return {
+                    "success": False,
+                    "error_message": f"No travel state found for spy {spy_id}"
+                }
+            
+            # Check if spy is in the origin city
+            if current_state.city_id != origin_id:
+                return {
+                    "success": False,
+                    "error_message": f"Spy is currently in {current_state.city_id}, not in {origin_id}"
+                }
             
             min_transfer = prefs.get("min_transfer", 10)  # Default 10 minute transfer time
+            
+            # Use spy's current simulated time as the earliest departure time
+            depart_after = current_state.simulated_time
             
             # Get all available routes
             all_routes = self._find_all_routes(origin_id, dest_id, depart_after, min_transfer)
@@ -182,7 +209,7 @@ class TravelService:
             if not all_routes:
                 return {
                     "success": False,
-                    "error_message": f"No valid route found from {origin_id} to {dest_id}"
+                    "error_message": f"No valid route found from {origin_id} to {dest_id} departing after {depart_after.strftime('%H:%M')}"
                 }
             
             # Select best route (shortest total time for now)
@@ -193,7 +220,8 @@ class TravelService:
                 "itinerary": best_route["legs"],
                 "total_duration": best_route["total_duration"],
                 "departure_time": best_route["departure_time"].isoformat(),
-                "arrival_time": best_route["arrival_time"].isoformat()
+                "arrival_time": best_route["arrival_time"].isoformat(),
+                "spy_current_time": current_state.simulated_time.isoformat()
             }
             
         except Exception as e:
@@ -204,18 +232,28 @@ class TravelService:
             }
 
 
-    def execute_travel(self, service_id: str) -> Dict[str, Any]:
+    def execute_travel(self, spy_id: str, service_id: str) -> Dict[str, Any]:
         """
         Execute travel on a specific service, updating spy state.
         
         Args:
+            spy_id: The ID of the spy traveling
             service_id: Service identifier to travel on
             
         Returns:
             Dict containing travel result and updated state
         """
         try:
-            logger.debug(f"Executing travel on service: {service_id}")
+            logger.debug(f"Executing travel on service: {service_id} for spy: {spy_id}")
+            
+            # Get current travel state
+            current_state = self.get_travel_state(spy_id)
+            if not current_state:
+                return {
+                    "success": False,
+                    "error_code": "NO_TRAVEL_STATE",
+                    "error_message": f"No travel state found for spy {spy_id}"
+                }
             
             # Get service details
             schedule = self.db.query(TrainScheduleModel).filter(
@@ -229,42 +267,47 @@ class TravelService:
                     "error_message": f"Service {service_id} not found"
                 }
             
-            # Check if departure time has passed (simulate real-time constraints)
-            current_time = datetime.now(timezone.utc)
-            departure_time = self._parse_schedule_time(schedule.departure_time, current_time)
+            # Check if spy is in the origin city
+            if current_state.city_id != schedule.origin_city_id:
+                return {
+                    "success": False,
+                    "error_code": "WRONG_LOCATION",
+                    "error_message": f"Spy is in {current_state.city_id}, but service {service_id} departs from {schedule.origin_city_id}"
+                }
             
-            if current_time > departure_time + timedelta(minutes=5):  # 5 minute grace period
+            # Parse schedule times using spy's current simulated time as base
+            departure_time = self._parse_schedule_time(schedule.departure_time, current_state.simulated_time)
+            
+            # Check if departure time has passed in the spy's simulated world
+            if current_state.simulated_time > departure_time + timedelta(minutes=5):  # 5 minute grace period
                 return {
                     "success": False,
                     "error_code": "MISSED_DEPARTURE",
-                    "error_message": f"Departure time {schedule.departure_time} has passed"
-                }
-            
-            # Check for connection issues if this is a connecting service
-            connection_check = self._check_connection_issues(schedule, current_time)
-            if not connection_check["valid"]:
-                return {
-                    "success": False,
-                    "error_code": "MISSED_CONNECTION",
-                    "error_message": connection_check["message"]
+                    "error_message": f"Departure time {schedule.departure_time} has passed in the spy's timeline"
                 }
             
             # Calculate arrival time and duration
             arrival_time = self._parse_schedule_time(schedule.arrival_time, departure_time)
             duration_minutes = int((arrival_time - departure_time).total_seconds() / 60)
             
-            # Update spy state (for now, return mock updated state)
-            # In a real implementation, this would update the spy's database record
-            updated_state = TravelState(
+            # Update spy's travel state
+            travel_state_repo = TravelStateRepository(self.db)
+            updated_state = travel_state_repo.update(spy_id, TravelStateUpdate(
                 city_id=schedule.destination_city_id,
-                time_utc=arrival_time,
+                simulated_time=arrival_time,
                 inventory={
-                    "passport": "Valid",
                     "tickets": [f"Service {service_id}"],
-                    "cash": "500 EUR",
-                    "equipment": ["disguise", "radio"]
+                    "cash": "500 EUR",  # Keep existing cash
+                    "equipment": ["disguise", "radio"]  # Keep existing equipment
                 }
-            )
+            ))
+            
+            if not updated_state:
+                return {
+                    "success": False,
+                    "error_code": "STATE_UPDATE_FAILED",
+                    "error_message": "Failed to update spy's travel state"
+                }
             
             travel_result = {
                 "service_id": service_id,
