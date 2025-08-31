@@ -389,6 +389,37 @@ class TravelService:
             logger.error(f"Error getting train schedules: {str(e)}")
             return []
     
+    def get_schedules_from_city(self, origin_city_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all train schedules from a specific city.
+        
+        Args:
+            origin_city_id: ID of the origin city
+            
+        Returns:
+            List of train schedule dictionaries
+        """
+        try:
+            schedules = self.db.query(TrainScheduleModel).filter(
+                TrainScheduleModel.origin_city_id == origin_city_id
+            ).all()
+            
+            return [
+                {
+                    "id": schedule.id,
+                    "service_id": schedule.service_id,
+                    "origin_city_id": schedule.origin_city_id,
+                    "destination_city_id": schedule.destination_city_id,
+                    "departure_time": schedule.departure_time,
+                    "arrival_time": schedule.arrival_time,
+                    "days_of_week": schedule.days_of_week
+                }
+                for schedule in schedules
+            ]
+        except Exception as e:
+            logger.error(f"Error getting schedules from city: {str(e)}")
+            return []
+    
     def plan_journey(self, origin_city_id: str, destination_city_id: str, 
                      departure_date: datetime) -> Dict[str, Any]:
         """

@@ -229,6 +229,46 @@ class TestTravelTools:
             assert result["destination"] == "munich"
             assert result["tool_calls"] == []
 
+    def test_get_train_schedules_no_destination(self, mock_db_session, sample_train_schedules):
+        """Test successful retrieval of train schedules without destination (all from origin city)."""
+        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+            
+            mock_get_db.return_value = iter([mock_db_session])
+            mock_service = Mock()
+            mock_service.get_schedules_from_city.return_value = sample_train_schedules
+            mock_service_class.return_value = mock_service
+            
+            result = TravelTools.get_train_schedules("vienna")
+            
+            assert result["response"] == "Found 1 train schedules from vienna"
+            assert result["schedules"] == sample_train_schedules
+            assert result["count"] == 1
+            assert result["origin"] == "vienna"
+            assert result["destination"] is None
+            assert result["tool_calls"] == []
+            mock_service.get_schedules_from_city.assert_called_once_with("vienna")
+
+    def test_get_train_schedules_no_destination_no_schedules(self, mock_db_session):
+        """Test train schedules retrieval without destination when none exist."""
+        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+            
+            mock_get_db.return_value = iter([mock_db_session])
+            mock_service = Mock()
+            mock_service.get_schedules_from_city.return_value = []
+            mock_service_class.return_value = mock_service
+            
+            result = TravelTools.get_train_schedules("vienna")
+            
+            assert result["response"] == "Found 0 train schedules from vienna"
+            assert result["schedules"] == []
+            assert result["count"] == 0
+            assert result["origin"] == "vienna"
+            assert result["destination"] is None
+            assert result["tool_calls"] == []
+            mock_service.get_schedules_from_city.assert_called_once_with("vienna")
+
     def test_plan_journey_success(self, mock_db_session):
         """Test successful journey planning."""
         with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
@@ -345,7 +385,7 @@ class TestTravelTools:
         assert "origin_city_id" in schedules_tool["parameters"]["properties"]
         assert "destination_city_id" in schedules_tool["parameters"]["properties"]
         assert "origin_city_id" in schedules_tool["parameters"]["required"]
-        assert "destination_city_id" in schedules_tool["parameters"]["required"]
+        assert "destination_city_id" not in schedules_tool["parameters"]["required"]  # Now optional
 
 
 class TestTravelToolsRequestModels:
@@ -363,12 +403,20 @@ class TestTravelToolsRequestModels:
     
     def test_get_train_schedules_request(self):
         """Test GetTrainSchedulesRequest model."""
+        # Test with both parameters
         request = GetTrainSchedulesRequest(
             origin_city_id="vienna",
             destination_city_id="munich"
         )
         assert request.origin_city_id == "vienna"
         assert request.destination_city_id == "munich"
+        
+        # Test with only origin (destination is now optional)
+        request_optional = GetTrainSchedulesRequest(
+            origin_city_id="vienna"
+        )
+        assert request_optional.origin_city_id == "vienna"
+        assert request_optional.destination_city_id is None
     
     def test_plan_journey_request(self):
         """Test PlanJourneyRequest model."""

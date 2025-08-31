@@ -50,7 +50,7 @@ class GetCitiesRequest(BaseModel):
 class GetTrainSchedulesRequest(BaseModel):
     """Request model for getting train schedules."""
     origin_city_id: str = Field(..., description="Origin city ID")
-    destination_city_id: str = Field(..., description="Destination city ID")
+    destination_city_id: Optional[str] = Field(None, description="Optional destination city ID. If not provided, returns all schedules from origin city")
 
 class PlanJourneyRequest(BaseModel):
     """Request model for planning a journey."""
@@ -344,29 +344,38 @@ class TravelTools:
             }
 
     @classmethod
-    def get_train_schedules(cls, origin_city_id: str, destination_city_id: str) -> Dict[str, Any]:
+    def get_train_schedules(cls, origin_city_id: str, destination_city_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Get train schedules between two cities.
+        Get train schedules from a city, optionally filtered by destination.
         
         Args:
             origin_city_id: Origin city ID
-            destination_city_id: Destination city ID
+            destination_city_id: Optional destination city ID. If not provided, returns all schedules from origin city
             
         Returns:
             Dict containing train schedules
         """
-        logger.debug(f"Getting train schedules from {origin_city_id} to {destination_city_id}")
+        if destination_city_id:
+            logger.debug(f"Getting train schedules from {origin_city_id} to {destination_city_id}")
+        else:
+            logger.debug(f"Getting all train schedules from {origin_city_id}")
         
         try:
             # Get database session
             db = next(get_db())
             travel_service = TravelService(db)
             
-            # Get schedules
-            schedules = travel_service.get_train_schedules(origin_city_id, destination_city_id)
+            # Get schedules based on whether destination is specified
+            if destination_city_id:
+                schedules = travel_service.get_train_schedules(origin_city_id, destination_city_id)
+                response_msg = f"Found {len(schedules)} train schedules from {origin_city_id} to {destination_city_id}"
+            else:
+                # Get all schedules from origin city
+                schedules = travel_service.get_schedules_from_city(origin_city_id)
+                response_msg = f"Found {len(schedules)} train schedules from {origin_city_id}"
             
             return {
-                "response": f"Found {len(schedules)} train schedules from {origin_city_id} to {destination_city_id}",
+                "response": response_msg,
                 "schedules": schedules,
                 "count": len(schedules),
                 "origin": origin_city_id,
@@ -552,7 +561,7 @@ class TravelTools:
             },
             {
                 "name": "get_train_schedules",
-                "description": "Get train schedules between two specific cities. Use this when you need to find train times between origin and destination.",
+                "description": "Get train schedules from a city, optionally filtered by destination. Use this when you need to find train times from an origin city, with or without specifying a destination.",
                 "function": cls.get_train_schedules,
                 "parameters": {
                     "type": "object",
@@ -563,10 +572,10 @@ class TravelTools:
                         },
                         "destination_city_id": {
                             "type": "string",
-                            "description": "Destination city ID"
+                            "description": "Optional destination city ID. If not provided, returns all schedules from origin city"
                         }
                     },
-                    "required": ["origin_city_id", "destination_city_id"]
+                    "required": ["origin_city_id"]
                 }
             },
             {

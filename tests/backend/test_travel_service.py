@@ -181,6 +181,62 @@ class TestTravelService:
         
         assert len(result) == 0
 
+    def test_get_schedules_from_city_success(self, mock_db_session):
+        """Test successful retrieval of all schedules from a city."""
+        service = TravelService(mock_db_session)
+        
+        # Mock query result
+        mock_schedule = Mock()
+        mock_schedule.id = "schedule_1"
+        mock_schedule.service_id = "ICE123"
+        mock_schedule.origin_city_id = "vienna"
+        mock_schedule.destination_city_id = "munich"
+        mock_schedule.departure_time = "08:00"
+        mock_schedule.arrival_time = "12:30"
+        mock_schedule.days_of_week = ["monday", "tuesday", "wednesday"]
+        
+        mock_query = Mock()
+        mock_filter = Mock()
+        mock_all = Mock()
+        
+        mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_schedule]
+        
+        result = service.get_schedules_from_city("vienna")
+        
+        assert len(result) == 1
+        assert result[0]["service_id"] == "ICE123"
+        assert result[0]["origin_city_id"] == "vienna"
+        assert result[0]["destination_city_id"] == "munich"
+
+    def test_get_schedules_from_city_no_schedules(self, mock_db_session):
+        """Test retrieval of schedules from city when none exist."""
+        service = TravelService(mock_db_session)
+        
+        # Mock empty result
+        mock_query = Mock()
+        mock_filter = Mock()
+        mock_all = Mock()
+        
+        mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.all.return_value = []
+        
+        result = service.get_schedules_from_city("vienna")
+        
+        assert len(result) == 0
+
+    def test_get_schedules_from_city_exception_handling(self, mock_db_session):
+        """Test exception handling in get_schedules_from_city."""
+        service = TravelService(mock_db_session)
+        
+        mock_db_session.query.side_effect = Exception("Database connection failed")
+        
+        result = service.get_schedules_from_city("vienna")
+        
+        assert len(result) == 0
+
     def test_plan_journey_success(self, mock_db_session):
         """Test successful journey planning."""
         service = TravelService(mock_db_session)
