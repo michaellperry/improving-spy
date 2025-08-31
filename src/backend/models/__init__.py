@@ -42,6 +42,12 @@ class TravelStateModel(Base):
     inventory = Column(Text, nullable=False)  # JSON-serialized inventory
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to spy
+    spy = relationship("SpyModel", back_populates="travel_state")
+    
+    # Relationship to city
+    city = relationship("CityModel")
 
 # Database Model: Spy (SQLAlchemy)
 class SpyModel(Base):
@@ -52,6 +58,9 @@ class SpyModel(Base):
     codename = Column(String, nullable=False)
     biography = Column(Text, nullable=False)
     specialty = Column(String, nullable=False)
+    
+    # Relationship to travel state
+    travel_state = relationship("TravelStateModel", back_populates="spy", uselist=False)
 
 # Database Model: Conversation
 class Conversation(Base):
@@ -104,6 +113,7 @@ class TrainSchedule(TrainScheduleBase):
 class TravelState(BaseModel):
     """Pydantic model for spy travel state"""
     city_id: str = Field(..., description="Current city ID")
+    city: Optional[City] = Field(None, description="City details")
     time_utc: datetime = Field(..., description="Current time in UTC")
     inventory: Dict[str, Any] = Field(default_factory=dict, description="Travel inventory (tickets, passport, etc.)")
 
