@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from pydantic_ai import Agent, Tool
@@ -238,3 +238,102 @@ You must yes-and the user's questions."""
                 "spy_name": self.spy.get('name', 'Unknown'),
                 "tool_calls": []
             }
+
+    async def chat_with_context(self, message: str, conversation_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate a response to a message with conversation context.
+        
+        Args:
+            message: The user's message
+            conversation_history: List of previous messages in the conversation
+            
+        Returns:
+            Dict containing the response data with required fields
+        """
+        logger.info(f"Starting chat processing with context for message: {message}")
+        logger.info(f"Conversation history contains {len(conversation_history)} messages")
+        
+        try:
+            # Format conversation history for the LLM
+            formatted_context = self._format_conversation_context(conversation_history)
+            
+            # Create a context-aware message
+            context_message = self._create_context_message(message, formatted_context)
+            
+            logger.info("Sending context-aware message to AI model...")
+            result = await self.ai.run(context_message)
+            logger.info("Received response from AI model")
+        
+            # Extract the actual response from AgentRunResult
+            logger.info("Processing AI response...")
+            response = str(result.output) if hasattr(result, 'output') else str(result)
+            logger.debug(f"Raw response: {response}")
+        
+            # Clean up common response artifacts
+            if response.startswith('AgentRunResult(output='):
+                response = response[20:-1]  # Remove AgentRunResult(output="...")
+            if response.startswith('"') and response.endswith('"'):
+                response = response[1:-1]  # Remove surrounding quotes
+            
+            logger.info("Preparing final response")
+            return {
+                "response": response,
+                "spy_id": str(self.spy.get('id', '')),
+                "spy_name": self.spy.get('name', 'Unknown')
+            }
+            
+        except Exception as e:
+            logger.error("Error in chat_with_context: %s", str(e), exc_info=True)
+            return {
+                "response": f"I encountered an error: {str(e)}",
+                "spy_id": str(self.spy.get('id', '')),
+                "spy_name": self.spy.get('name', 'Unknown')
+            }
+
+    def _format_conversation_context(self, conversation_history: List[Dict[str, Any]]) -> str:
+        """Format conversation history for LLM consumption.
+        
+        Args:
+            conversation_history: List of message dictionaries
+            
+        Returns:
+            Formatted string representation of conversation history
+        """
+        if not conversation_history:
+            return ""
+        
+        formatted_messages = []
+        for msg in conversation_history:
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            timestamp = msg.get('timestamp', '')
+            
+            if role == 'user':
+                formatted_messages.append(f"User: {content}")
+            elif role == 'assistant':
+                formatted_messages.append(f"Assistant: {content}")
+            else:
+                formatted_messages.append(f"{role.title()}: {content}")
+        
+        return "\n".join(formatted_messages)
+
+    def _create_context_message(self, current_message: str, conversation_context: str) -> str:
+        """Create a context-aware message for the LLM.
+        
+        Args:
+            current_message: The current user message
+            conversation_context: Formatted conversation history
+            
+        Returns:
+            Message with context for the LLM
+        """
+        if not conversation_context:
+            return current_message
+        
+        context_message = f"""Previous conversation context:
+{conversation_context}
+
+Current message: {current_message}
+
+Please respond to the current message while considering the conversation context above."""
+        
+        return context_message

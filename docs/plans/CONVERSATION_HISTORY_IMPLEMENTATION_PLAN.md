@@ -4,17 +4,17 @@
 This plan addresses the critical gap where the application stores conversation history but never sends it to the LLM, preventing the AI agents from maintaining context across multiple messages. The goal is to implement a simple conversation management system where each spy selection creates a new conversation and the LLM receives conversation history for context.
 
 ## Progress Summary
-- ❌ **Phase 1: Backend Conversation Management** - PENDING
+- ✅ **Phase 1: Backend Conversation Management** - COMPLETED
 - ❌ **Phase 2: LLM Context Integration** - PENDING  
 - ❌ **Phase 3: Frontend Integration** - PENDING
 
-**Current Status**: Application has conversation storage infrastructure but LLM never receives conversation history, limiting context awareness.
+**Current Status**: Phase 1 completed - Backend now supports conversation creation and chat with conversation context. LLM receives conversation history for context awareness.
 
 ## Prerequisites
-- [ ] Backend server running (`uv run uvicorn main:app --port 8000 --reload`)
-- [ ] Database initialized with conversation tables
-- [ ] Frontend CLI accessible (`uv run python run_cli.py`)
-- [ ] Ollama running locally with qwen2.5:14b-instruct model
+- [x] Backend server running (`uv run uvicorn main:app --port 8000 --reload`)
+- [x] Database initialized with conversation tables
+- [x] Frontend CLI accessible (`uv run python run_cli.py`)
+- [x] Ollama running locally with qwen2.5:14b-instruct model
 
 ## Phase 1: Backend Conversation Management ✅
 
@@ -22,42 +22,55 @@ This plan addresses the critical gap where the application stores conversation h
 **Location**: `src/backend/api/routes.py`
 
 **Required Steps**:
-- [ ] Add `POST /api/conversations` endpoint to create new conversations
-- [ ] Endpoint accepts `spy_id` and returns `conversation_id`
-- [ ] Store spy_id with conversation in database
-- [ ] Ensure conversation repository creates conversation records
+- [x] Add `POST /api/conversations` endpoint to create new conversations
+- [x] Endpoint accepts `spy_id` and returns `conversation_id`
+- [x] Store spy_id with conversation in database
+- [x] Ensure conversation repository creates conversation records
 
-**Files to Modify**:
-- `src/backend/api/routes.py` - Add conversation creation endpoint
-- `src/backend/repositories/conversation_repository.py` - Ensure create method works
+**Files Modified**:
+- `src/backend/api/routes.py` - Added conversation creation endpoint
+- `src/backend/repositories/conversation_repository.py` - Already functional
 
 ### 1.2 Chat with Conversation Context
 **Location**: `src/backend/api/routes.py`
 
 **Required Steps**:
-- [ ] Modify chat endpoint to use `conversation_id` instead of `spy_id`
-- [ ] Retrieve conversation history by `conversation_id`
-- [ ] Get spy_id from conversation record
-- [ ] Send conversation history to LLM for context
+- [x] Modify chat endpoint to use `conversation_id` instead of `spy_id`
+- [x] Retrieve conversation history by `conversation_id`
+- [x] Get spy_id from conversation record
+- [x] Send conversation history to LLM for context
+
+**Files Modified**:
+- `src/backend/api/routes.py` - Added `/chat/conversation/{conversation_id}` endpoint
+- `src/backend/services/agent.py` - Added `chat_with_context` method
+- `src/backend/models/__init__.py` - Added `ConversationCreate` model
 
 **Testing Approach**:
-- [ ] Unit tests for conversation creation and retrieval
-- [ ] Integration tests for chat with conversation context
-- [ ] Manual validation: Create conversation, send messages, verify history
+- [x] Unit tests for conversation creation and retrieval
+- [x] Integration tests for chat with conversation context
+- [x] Manual validation: Create conversation, send messages, verify history
 
 ### 1.3 Acceptance Criteria
 **Functional Requirements**:
-- [ ] New conversation created when spy is selected
-- [ ] Chat endpoint uses conversation_id for routing
-- [ ] Conversation history retrieved and sent to LLM
-- [ ] Spy_id stored with conversation for context
-- [ ] Proper error handling for invalid conversation IDs
+- [x] New conversation created when spy is selected
+- [x] Chat endpoint uses conversation_id for routing
+- [x] Conversation history retrieved and sent to LLM
+- [x] Spy_id stored with conversation for context
+- [x] Proper error handling for invalid conversation IDs
 
 **Testing Approach**:
-- [ ] Unit tests for conversation endpoints
-- [ ] Integration tests for conversation flow
-- [ ] Manual validation: Test conversation creation and chat flow
-- [ ] Error handling tests: Invalid conversation IDs
+- [x] Unit tests for conversation endpoints
+- [x] Integration tests for conversation flow
+- [x] Manual validation: Test conversation creation and chat flow
+- [x] Error handling tests: Invalid conversation IDs
+
+**Implementation Details**:
+- Added `POST /api/conversations` endpoint for conversation creation
+- Added `POST /api/chat/conversation/{conversation_id}` endpoint for context-aware chat
+- Maintained backward compatibility with existing `/api/chat/{spy_id}` endpoint
+- Added `ConversationCreate` Pydantic model for conversation creation
+- Enhanced `ChatAgent` with `chat_with_context` method for conversation history
+- Conversation history is automatically stored and retrieved for LLM context
 
 ## Phase 2: LLM Context Integration ✅
 

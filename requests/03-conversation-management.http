@@ -1,0 +1,40 @@
+### Conversation Management API Tests
+
+### 1. Create a new conversation for a spy
+POST http://localhost:8000/api/conversations
+Content-Type: application/json
+
+{
+  "spy_id": "{{spy_id}}"
+}
+
+### 2. Chat with conversation context (using conversation_id)
+POST http://localhost:8000/api/chat/conversation/{{conversation_id}}
+Content-Type: application/json
+
+{
+  "message": "Hello, can you tell me about your specialty?"
+}
+
+### 3. Chat with conversation context - follow-up message
+POST http://localhost:8000/api/chat/conversation/{{conversation_id}}
+Content-Type: application/json
+
+{
+  "message": "What did we just talk about?"
+}
+
+### 4. Legacy chat endpoint (still works for backward compatibility)
+POST http://localhost:8000/api/chat/{{spy_id}}
+Content-Type: application/json
+
+{
+  "message": "Hello from legacy endpoint"
+}
+
+### 5. Get conversation details
+GET http://localhost:8000/api/conversations/{{conversation_id}}
+
+### Variables to set:
+# spy_id: Use an existing spy ID from your database
+# conversation_id: Use the conversation ID returned from step 1

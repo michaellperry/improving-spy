@@ -7,7 +7,7 @@ from datetime import datetime
 
 # SQLAlchemy ORM Base
 Base = declarative_base()
-__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse', 'City', 'CityModel', 'TrainSchedule', 'TrainScheduleModel', 'TravelState', 'TravelStateCreate', 'TravelStateUpdate', 'TravelStateModel']
+__all__ = ['Spy', 'SpyBase', 'SpyCreate', 'SpyModel', 'Conversation', 'ConversationCreate', 'SpyProfile', 'ToolCall', 'ToolCallResponse', 'ChatRequest', 'ChatResponse', 'City', 'CityModel', 'TrainSchedule', 'TrainScheduleModel', 'TravelState', 'TravelStateCreate', 'TravelStateUpdate', 'TravelStateModel']
 
 # Database Model: City
 class CityModel(Base):
@@ -147,6 +147,10 @@ class Spy(SpyBase):
 
     class Config:
         from_attributes = True
+
+class ConversationCreate(BaseModel):
+    """Pydantic model for creating a new conversation"""
+    spy_id: str = Field(..., description="ID of the spy for this conversation")
 
 class SpyProfile(BaseModel):
     id: str
