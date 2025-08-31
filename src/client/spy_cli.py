@@ -405,10 +405,21 @@ class SpyCommandConsole(App):
                 chat_window.add_message(response["response"], is_user=False)
                 status.update("Status: Connected")
                 
+            except ConnectionError as e:
+                # Handle connection errors with clear messaging
+                error_msg = str(e)
+                status.update("Status: Connection Error")
+                chat_window.add_message(f"🔴 {error_msg}", is_user=False)
+                raise
+                
             except Exception as e:
                 status.update("Status: Error (see chat)")
                 raise
                 
+        except ConnectionError as e:
+            # Connection errors are already handled above, just log them
+            logger.error(f"Connection error: {str(e)}")
+            
         except Exception as e:
             error_msg = f"Error sending message: {str(e)}"
             logger.error(error_msg, exc_info=True)

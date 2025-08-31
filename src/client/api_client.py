@@ -1,14 +1,9 @@
 import asyncio
-import json
-import uuid
-import os
-import time
+import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime
 
 import httpx
 import websockets
-import logging
 
 from . import config as config
 
@@ -24,37 +19,80 @@ class SpyAPIClient:
         self.reconnect_attempts = 0
         self.ws_retry_attempts = config.WS_RECONNECT_ATTEMPTS
         self.ws_retry_delay = config.WS_RECONNECT_DELAY
-        self.offline_mode = False
-        self.offline_cache_dir = os.path.join(config.DATA_DIR, "offline_cache")
-        os.makedirs(self.offline_cache_dir, exist_ok=True)
     
     async def get_spies(self) -> List[Dict[str, Any]]:
-        """Get list of available spies"""
+        """
+        Get list of available spies
+        
+        Raises:
+            httpx.HTTPStatusError: If the API returns an error status code
+            httpx.RequestError: If the request fails to be sent
+            ConnectionError: If the server is unreachable
+        """
         try:
             logging.debug(f"Fetching spies from {self.base_url}/api/spies/")
             response = await self.client.get(f"{self.base_url}/api/spies/")
             response.raise_for_status()
-            self._cache_response("spies", response.json())
-            self.offline_mode = False
             return response.json()
-        except httpx.HTTPError as e:
-            logging.error(f"Failed to fetch spies: {str(e)}", exc_info=True)
-            self.offline_mode = True
-            return await self._get_cached_response("spies", [])
+        except httpx.HTTPStatusError as e:
+            error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
+            logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.RequestError as e:
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/spies/. Please check your network connection and ensure the server is running."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
     
     async def get_spy(self, spy_id: str) -> Dict[str, Any]:
-        """Get details for a specific spy"""
-        response = await self.client.get(f"{self.base_url}/api/spies/{spy_id}")
-        return response.json()
+        """
+        Get details for a specific spy
+        
+        Raises:
+            httpx.HTTPStatusError: If the API returns an error status code
+            httpx.RequestError: If the request fails to be sent
+            ConnectionError: If the server is unreachable
+        """
+        try:
+            response = await self.client.get(f"{self.base_url}/api/spies/{spy_id}")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                error_msg = f"Spy not found: No spy exists with ID '{spy_id}'"
+            else:
+                error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
+            logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.RequestError as e:
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/spies/{spy_id}. Please check your network connection and ensure the server is running."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
     
     async def create_conversation(self, spy_id: str) -> Dict[str, Any]:
-        """Create a new conversation"""
-        # Using form data instead of JSON as per OpenAPI spec
-        response = await self.client.post(
-            f"{self.base_url}/api/conversation",
-            data={"spy_id": spy_id}
-        )
-        return response.json()
+        """
+        Create a new conversation
+        
+        Raises:
+            httpx.HTTPStatusError: If the API returns an error status code
+            httpx.RequestError: If the request fails to be sent
+            ConnectionError: If the server is unreachable
+        """
+        try:
+            # Using form data instead of JSON as per OpenAPI spec
+            response = await self.client.post(
+                f"{self.base_url}/api/conversation",
+                data={"spy_id": spy_id}
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
+            logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.RequestError as e:
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/conversation. Please check your network connection and ensure the server is running."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
     
     async def chat(
         self, 
@@ -74,6 +112,11 @@ class SpyAPIClient:
             
         Returns:
             Dict containing the response and any tool calls
+            
+        Raises:
+            httpx.HTTPStatusError: If the API returns an error status code
+            httpx.RequestError: If the request fails to be sent
+            ConnectionError: If the server is unreachable
         """
         try:
             payload = {"message": message}
@@ -87,17 +130,20 @@ class SpyAPIClient:
                 json=payload
             )
             response.raise_for_status()
-            response_data = response.json()
-            self._cache_chat_response(spy_id, message, response_data)
-            self.offline_mode = False
-            return response_data
-        except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            logging.warning(f"API unavailable, using offline mode: {str(e)}")
-            self.offline_mode = True
-            return await self._generate_offline_response(spy_id, message)
-    
-    # The debrief method has been removed as it's no longer part of the API
-    # Use the chat() method with tool calls instead for mission-related queries
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                error_msg = f"Spy not found: No spy exists with ID '{spy_id}'"
+            elif e.response.status_code == 422:
+                error_msg = f"Validation Error: The request format is invalid. Details: {e.response.text}"
+            else:
+                error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
+            logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.RequestError as e:
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/{spy_id}. Please check your network connection and ensure the server is running."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
     
     async def chat_with_history(
         self, 
@@ -123,6 +169,7 @@ class SpyAPIClient:
         Raises:
             httpx.HTTPStatusError: If the API returns an error status code
             httpx.RequestError: If the request fails to be sent
+            ConnectionError: If the server is unreachable
         """
         try:
             payload = {"message": message}
@@ -136,18 +183,20 @@ class SpyAPIClient:
                 json=payload
             )
             response.raise_for_status()
-            response_data = response.json()
-            self._cache_chat_response(spy_id, message, response_data, conversation_id)
-            self.offline_mode = False
-            return response_data
+            return response.json()
         except httpx.HTTPStatusError as e:
-            error_msg = f"API error: {e.response.status_code} - {e.response.text}"
+            if e.response.status_code == 404:
+                error_msg = f"Not found: Either spy '{spy_id}' or conversation '{conversation_id}' does not exist"
+            elif e.response.status_code == 422:
+                error_msg = f"Validation Error: The request format is invalid. Details: {e.response.text}"
+            else:
+                error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
             logging.error(error_msg)
-            raise
+            raise ConnectionError(error_msg)
         except httpx.RequestError as e:
-            logging.warning(f"API unavailable, using offline mode: {str(e)}")
-            self.offline_mode = True
-            return await self._generate_offline_response(spy_id, message, conversation_id)
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/{spy_id}/conversation/{conversation_id}. Please check your network connection and ensure the server is running."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
     
     async def connect_websocket(self, spy_id: str, conversation_id: Optional[str] = None) -> websockets.WebSocketClientProtocol:
         """
@@ -197,7 +246,7 @@ class SpyAPIClient:
                 error_msg = f"WebSocket connection timed out (attempt {attempt+1}/{self.ws_retry_attempts})"
                 logging.error(error_msg)
                 if attempt == self.ws_retry_attempts - 1:  # Last attempt
-                    raise ConnectionError(error_msg)
+                    raise ConnectionError(f"WebSocket connection failed: {error_msg}. Please check your network connection and ensure the server is running.")
                     
             except Exception as e:
                 self.reconnect_attempts += 1
@@ -205,7 +254,7 @@ class SpyAPIClient:
                 logging.error(error_msg, exc_info=True)
                 
                 if attempt == self.ws_retry_attempts - 1:  # Last attempt
-                    raise ConnectionError(f"Failed to connect to WebSocket after {self.ws_retry_attempts} attempts: {str(e)}")
+                    raise ConnectionError(f"WebSocket connection failed after {self.ws_retry_attempts} attempts: {str(e)}. Please check your network connection and ensure the server is running.")
                 
         # This should theoretically never be reached due to the raise statements above
         raise ConnectionError("Unexpected error in WebSocket connection")
@@ -217,92 +266,3 @@ class SpyAPIClient:
             await self.ws.close()
             self.ws_connected = False
         await self.client.aclose()
-
-    def _cache_response(self, cache_key: str, data: Any) -> None:
-        """Cache API response for offline use"""
-        try:
-            cache_file = os.path.join(self.offline_cache_dir, f"{cache_key}.json")
-            with open(cache_file, "w") as f:
-                json.dump({
-                    "timestamp": time.time(),
-                    "data": data
-                }, f)
-            logging.debug(f"Cached response for {cache_key}")
-        except Exception as e:
-            logging.error(f"Failed to cache response: {str(e)}", exc_info=True)
-
-    def _cache_chat_response(self, spy_id: str, message: str, response: Dict[str, Any], 
-                           conversation_id: Optional[str] = None) -> None:
-        """Cache a chat response for offline use"""
-        try:
-            # Create spy-specific cache directory
-            spy_cache_dir = os.path.join(self.offline_cache_dir, spy_id)
-            os.makedirs(spy_cache_dir, exist_ok=True)
-            
-            # Generate a unique ID for this chat if conversation_id is not provided
-            chat_id = conversation_id or str(uuid.uuid4())
-            
-            # Create conversation-specific cache directory
-            conv_cache_dir = os.path.join(spy_cache_dir, chat_id)
-            os.makedirs(conv_cache_dir, exist_ok=True)
-            
-            # Save the response with timestamp
-            timestamp = datetime.now().isoformat()
-            filename = f"{timestamp.replace(':', '-')}.json"
-            filepath = os.path.join(conv_cache_dir, filename)
-            
-            with open(filepath, "w") as f:
-                json.dump({
-                    "timestamp": timestamp,
-                    "message": message,
-                    "response": response
-                }, f)
-                
-            logging.debug(f"Cached chat response for spy {spy_id}, conversation {chat_id}")
-        except Exception as e:
-            logging.error(f"Failed to cache chat response: {str(e)}", exc_info=True)
-
-    async def _get_cached_response(self, cache_key: str, default: Any = None) -> Any:
-        """Get a cached response"""
-        try:
-            cache_file = os.path.join(self.offline_cache_dir, f"{cache_key}.json")
-            if os.path.exists(cache_file):
-                with open(cache_file, "r") as f:
-                    cached = json.load(f)
-                logging.info(f"Using cached response for {cache_key}")
-                return cached.get("data", default)
-        except Exception as e:
-            logging.error(f"Failed to read cached response: {str(e)}", exc_info=True)
-        
-        return default
-
-    async def _generate_offline_response(self, spy_id: str, message: str, 
-                                               conversation_id: Optional[str] = None) -> Dict[str, Any]:
-        """Generate an offline response based on cached data"""
-        # Notify that we're in offline mode
-        offline_notice = "[OFFLINE MODE] "
-        
-        try:
-            # Check for specific message types to provide more contextual responses
-            if "help" in message.lower() or "assist" in message.lower():
-                response_text = f"{offline_notice}I'm currently in offline mode due to connectivity issues. I can still help with basic information, but my capabilities are limited until connection is restored."
-            elif "status" in message.lower() or "connection" in message.lower():
-                response_text = f"{offline_notice}The application is currently in offline mode. Your messages are being cached locally and will be synchronized when connectivity is restored."
-            else:
-                response_text = f"{offline_notice}I've received your message but I'm currently operating in offline mode. Your request has been saved locally and will be processed when connectivity is restored."
-            
-            return {
-                "spy_id": spy_id,
-                "spy_name": "Offline Assistant",
-                "message": message,
-                "response": response_text,
-                "conversation_id": conversation_id or str(uuid.uuid4()),
-                "offline": True
-            }
-        except Exception as e:
-            logging.error(f"Error generating offline response: {str(e)}", exc_info=True)
-            return {
-                "response": f"{offline_notice}Unable to process your request in offline mode. Please try again when connectivity is restored.",
-                "conversation_id": conversation_id or str(uuid.uuid4()),
-                "offline": True
-            }

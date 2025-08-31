@@ -159,6 +159,12 @@ class MainScreen(Screen):
                 self.notify(error_msg, severity="error")
                 self.chat_component.add_message(error_msg, is_user=False)
                 
+        except ConnectionError as e:
+            # Handle connection errors with clear messaging
+            error_msg = str(e)
+            self.notify("Connection Error", severity="error")
+            self.chat_component.add_message(f"🔴 {error_msg}", is_user=False)
+            
         except Exception as e:
             error_msg = f"Error sending message: {str(e)}"
             print(error_msg)  # Log to console for debugging
