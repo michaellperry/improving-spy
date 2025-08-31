@@ -244,10 +244,21 @@ class SpyCommandConsole(App):
     async def on_spy_selected(self, spy_data: Dict[str, Any]) -> None:
         """Handle spy selection"""
         logger.debug(f"on_spy_selected called with spy: {spy_data}")
+        
+        # Clear previous conversation state
+        self.conversation_id = None
+        self.messages = []
+        
         self.selected_spy = spy_data
         logger.info(f"Selected spy: {spy_data['name']}")
         
         try:
+            # Create new conversation immediately when spy is selected
+            logger.debug("Creating new conversation for selected spy")
+            conv = await self.api_client.create_conversation(spy_data["id"])
+            self.conversation_id = conv.get("conversation_id")
+            logger.info(f"New conversation created: {self.conversation_id}")
+            
             # Remove the spy selector if it exists
             try:
                 spy_selector = self.query_one("#spy-selector")
@@ -386,15 +397,10 @@ class SpyCommandConsole(App):
             status.update("Status: Sending message...")
             
             try:
-                # Always use chat with conversation history
+                # Send the message using conversation history
                 if not self.conversation_id:
-                    # Start a new conversation
-                    logger.debug("Starting new conversation")
-                    conv = await self.api_client.create_conversation(spy_id)
-                    self.conversation_id = conv.get("conversation_id")
-                    logger.info(f"New conversation created: {self.conversation_id}")
+                    raise RuntimeError("No conversation ID available. Please select a spy first.")
                 
-                # Send the message
                 response = await self.api_client.chat_with_history(
                     spy_id=spy_id,
                     conversation_id=self.conversation_id,
@@ -603,6 +609,101 @@ class SpyCommandConsole(App):
             logger.error(error_msg, exc_info=True)
             self.show_error(error_msg)
 
+    def setup_chat_ui(self) -> None:
+        """Set up the chat UI components"""
+        try:
+            logger.debug("Setting up chat UI components")
+            
+            # Get the chat container
+            chat_container = self.query_one("#chat-container")
+            if not chat_container:
+                logger.error("Chat container not found")
+                return
+            
+            # Clear any existing chat UI
+            chat_container.remove_children()
+            
+            # Create chat window with spy information
+            if self.selected_spy:
+                abbrev = "".join([word[0] for word in self.selected_spy["codename"].split() if word])
+                chat_window = ChatWindow(self.selected_spy["name"], abbrev)
+                chat_container.mount(chat_window)
+                
+                # Add welcome message
+                welcome_msg = f"I'm {self.selected_spy['name']}, codename {self.selected_spy['codename']}. How can I assist you?"
+                chat_window.add_message(welcome_msg, is_user=False)
+                self.messages.append({
+                    "role": "system",
+                    "content": welcome_msg,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                # Show input container
+                input_container = self.query_one("#input-container")
+                if input_container and not input_container.has_class("visible"):
+                    input_container.add_class("visible")
+                
+                # Focus the message input
+                message_input = self.query_one("#message-input")
+                if message_input:
+                    message_input.focus()
+                
+                logger.debug("Chat UI setup completed successfully")
+            else:
+                logger.error("No spy selected for chat UI setup")
+                
+        except Exception as e:
+            logger.error(f"Error setting up chat UI: {str(e)}", exc_info=True)
+            self.notify(f"Error setting up chat interface: {str(e)}", severity="error")
+    
+    def show_error(self, message: str) -> None:
+        """Display an error message in the chat window"""
+        try:
+            chat_window = self.query_one(ChatWindow)
+            if chat_window:
+                chat_window.add_message(f"Error: {message}", is_user=False)
+            else:
+                # Fallback to notification if chat window not available
+                self.notify(message, severity="error")
+        except Exception as e:
+            logger.error(f"Error showing error message: {str(e)}", exc_info=True)
+            # Final fallback to print
+            print(f"Error: {message}")
+    
+    async def connect_websocket(self) -> None:
+        """Connect to WebSocket for real-time updates"""
+        try:
+            if not self.selected_spy:
+                logger.warning("No spy selected, skipping WebSocket connection")
+                return
+                
+            spy_id = self.selected_spy["id"]
+            logger.info(f"Connecting to WebSocket for spy {spy_id}")
+            
+            # Update connection status
+            status = self.query_one("#connection-status")
+            if status:
+                status.update("Status: Connecting to WebSocket...")
+            
+            # Connect to WebSocket
+            await self.api_client.connect_websocket(spy_id, self.conversation_id)
+            
+            # Update connection status
+            if status:
+                status.update("Status: Connected (WebSocket)")
+                
+            logger.info("WebSocket connection established successfully")
+            
+        except Exception as e:
+            logger.error(f"Error connecting to WebSocket: {str(e)}", exc_info=True)
+            
+            # Update connection status
+            status = self.query_one("#connection-status")
+            if status:
+                status.update("Status: WebSocket connection failed")
+            
+            # Show error in chat if available
+            self.show_error(f"WebSocket connection failed: {str(e)}")
 
 
 if __name__ == "__main__":

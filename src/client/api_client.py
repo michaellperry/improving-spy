@@ -80,7 +80,7 @@ class SpyAPIClient:
         try:
             # Using form data instead of JSON as per OpenAPI spec
             response = await self.client.post(
-                f"{self.base_url}/api/conversation",
+                f"{self.base_url}/api/conversations",
                 data={"spy_id": spy_id}
             )
             response.raise_for_status()
@@ -90,7 +90,7 @@ class SpyAPIClient:
             logging.error(error_msg)
             raise ConnectionError(error_msg)
         except httpx.RequestError as e:
-            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/conversation. Please check your network connection and ensure the server is running."
+            error_msg = f"Connection Error: Unable to reach {self.base_url}/api/conversations. Please check your network connection and ensure the server is running."
             logging.error(f"{error_msg} Details: {str(e)}")
             raise ConnectionError(error_msg)
     
@@ -179,7 +179,7 @@ class SpyAPIClient:
                 payload["tool_outputs"] = tool_outputs
                 
             response = await self.client.post(
-                f"{self.base_url}/api/chat/{spy_id}/conversation/{conversation_id}",
+                f"{self.base_url}/api/chat/conversation/{conversation_id}",
                 json=payload
             )
             response.raise_for_status()
