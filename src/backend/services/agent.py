@@ -1,3 +1,9 @@
+"""Chat agent service for spy interactions with LLM integration.
+
+This module provides the ChatAgent class that handles conversations with spy agents,
+including conversation context management and tool calling capabilities.
+"""
+
 import logging
 from typing import Dict, Any, Optional, List
 from pathlib import Path
@@ -8,17 +14,21 @@ from pydantic_ai.models.openai import OpenAIModel
 
 from ..tools.travel_tools import TravelTools
 
+from .conversation_context import ConversationContextManager
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 class ChatAgent:
-    """Agent that handles chat with tool calling support and mission context caching."""
+    """Agent that handles chat with tool calling support and conversation context management."""
     
     def __init__(self, spy: Dict[str, Any]):
         """Initialize with spy profile and set up AI model."""
         self.spy = spy
         self.context_spy_id = spy['id']  # Store the bound spy ID for security
+        
+        # Initialize conversation context manager
+        self.context_manager = ConversationContextManager(max_context_messages=10)
         
         # Set up the AI model
         model = OpenAIModel(
@@ -100,7 +110,6 @@ class ChatAgent:
             logger.error(f"Error in _get_mission_context: {str(e)}")
             return f"Error retrieving mission: {str(e)}"
     
-        
     def _get_system_prompt(self) -> str:
         """The system prompt for the agent."""
         name = self.spy.get('name', 'a top secret agent')
@@ -135,37 +144,6 @@ Don't be overly verbose.
 You are allowed to make up facts as long as they are consistent with the context.  
 You must yes-and the user's questions."""
         return prompt
-    
-    def _get_tool_by_name(self, name: str) -> Optional[Dict]:
-        """Get a tool by its name."""
-        # Find the tool in the agent's toolsets
-        for toolset in self.ai.toolsets:
-            if hasattr(toolset, 'tools') and name in toolset.tools:
-                return toolset.tools[name]
-        return None
-    
-    async def _handle_tool_call(self, tool_call: Dict) -> Dict:
-        """Handle a single tool call."""
-        tool = self._get_tool_by_name(tool_call["name"])
-        if not tool:
-            return {
-                "tool_call_id": tool_call.get("id", ""),
-                "error": f"Tool {tool_call['name']} not found"
-            }
-            
-        try:
-            # Execute the tool function
-            result = tool.function(**tool_call["arguments"])
-            return {
-                "tool_call_id": tool_call.get("id", ""),
-                "name": tool_call["name"],
-                "content": result
-            }
-        except Exception as e:
-            return {
-                "tool_call_id": tool_call.get("id", ""),
-                "error": f"Error executing {tool_call['name']}: {str(e)}"
-            }
     
     async def chat(self, message: str) -> Dict[str, Any]:
         """Generate a response to a message.
@@ -253,11 +231,15 @@ You must yes-and the user's questions."""
         logger.info(f"Conversation history contains {len(conversation_history)} messages")
         
         try:
+            # Manage context window to avoid overwhelming the LLM
+            managed_history = self.context_manager.manage_context_window(conversation_history)
+            logger.info(f"Using {len(managed_history)} messages for context (from {len(conversation_history)} total)")
+            
             # Format conversation history for the LLM
-            formatted_context = self._format_conversation_context(conversation_history)
+            formatted_context = self.context_manager.format_conversation_context(managed_history)
             
             # Create a context-aware message
-            context_message = self._create_context_message(message, formatted_context)
+            context_message = self.context_manager.create_context_message(message, formatted_context)
             
             logger.info("Sending context-aware message to AI model...")
             result = await self.ai.run(context_message)
@@ -288,52 +270,3 @@ You must yes-and the user's questions."""
                 "spy_id": str(self.spy.get('id', '')),
                 "spy_name": self.spy.get('name', 'Unknown')
             }
-
-    def _format_conversation_context(self, conversation_history: List[Dict[str, Any]]) -> str:
-        """Format conversation history for LLM consumption.
-        
-        Args:
-            conversation_history: List of message dictionaries
-            
-        Returns:
-            Formatted string representation of conversation history
-        """
-        if not conversation_history:
-            return ""
-        
-        formatted_messages = []
-        for msg in conversation_history:
-            role = msg.get('role', 'unknown')
-            content = msg.get('content', '')
-            timestamp = msg.get('timestamp', '')
-            
-            if role == 'user':
-                formatted_messages.append(f"User: {content}")
-            elif role == 'assistant':
-                formatted_messages.append(f"Assistant: {content}")
-            else:
-                formatted_messages.append(f"{role.title()}: {content}")
-        
-        return "\n".join(formatted_messages)
-
-    def _create_context_message(self, current_message: str, conversation_context: str) -> str:
-        """Create a context-aware message for the LLM.
-        
-        Args:
-            current_message: The current user message
-            conversation_context: Formatted conversation history
-            
-        Returns:
-            Message with context for the LLM
-        """
-        if not conversation_context:
-            return current_message
-        
-        context_message = f"""Previous conversation context:
-{conversation_context}
-
-Current message: {current_message}
-
-Please respond to the current message while considering the conversation context above."""
-        
-        return context_message

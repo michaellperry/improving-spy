@@ -68,6 +68,9 @@ class Conversation(Base):
 
     id = Column(String, primary_key=True)
     spy_id = Column(String, nullable=False)
+    title = Column(String, nullable=True)  # Optional conversation title
+    created_at = Column(String, nullable=False)  # ISO timestamp string
+    updated_at = Column(String, nullable=False)  # ISO timestamp string
     messages = Column(Text, nullable=False)  # JSON-serialized message history
     mission_id = Column(String, nullable=True)
 
@@ -204,3 +207,19 @@ class ChatResponse(BaseModel):
         None,
         description="ID of the conversation, if applicable"
     )
+
+class Message(BaseModel):
+    """Model for individual messages in a conversation."""
+    role: str = Field(..., description="Role of the message sender (user/assistant)")
+    content: str = Field(..., description="Content of the message")
+    timestamp: str = Field(..., description="ISO timestamp of the message")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional message metadata")
+
+class ConversationHistory(BaseModel):
+    """Model for conversation history responses."""
+    conversation_id: str = Field(..., description="ID of the conversation")
+    spy_id: str = Field(..., description="ID of the spy")
+    messages: List[Message] = Field(..., description="List of messages in the conversation")
+    title: Optional[str] = Field(None, description="Optional conversation title")
+    created_at: str = Field(..., description="ISO timestamp of conversation creation")
+    updated_at: str = Field(..., description="ISO timestamp of last update")

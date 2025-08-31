@@ -55,9 +55,13 @@ class ConversationRepository:
     
     def create_conversation(self, spy_id: str) -> Dict[str, Any]:
         """Create a new conversation."""
+        now = datetime.utcnow().isoformat()
         conversation = Conversation(
             id=str(uuid.uuid4()),
             spy_id=spy_id,
+            title=None,  # Will be set later if needed
+            created_at=now,
+            updated_at=now,
             messages=json.dumps([])
         )
         self.db.add(conversation)
@@ -66,6 +70,9 @@ class ConversationRepository:
         return {
             "id": conversation.id,
             "spy_id": conversation.spy_id,
+            "title": conversation.title,
+            "created_at": conversation.created_at,
+            "updated_at": conversation.updated_at,
             "messages": []
         }
         
