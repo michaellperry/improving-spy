@@ -7,8 +7,8 @@ from typing import Callable
 class InputBar(Horizontal):
     """Input bar for sending messages"""
     
-    def __init__(self, on_submit: Callable[[str], None], id: str = None):
-        super().__init__(id=id)
+    def __init__(self, on_submit: Callable[[str], None], **kwargs):
+        super().__init__(**kwargs)
         self.on_submit = on_submit
         
     def compose(self) -> ComposeResult:
