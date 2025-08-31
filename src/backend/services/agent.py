@@ -18,6 +18,7 @@ class ChatAgent:
     def __init__(self, spy: Dict[str, Any]):
         """Initialize with spy profile and set up AI model."""
         self.spy = spy
+        self.context_spy_id = spy['id']  # Store the bound spy ID for security
         
         # Set up the AI model
         model = OpenAIModel(
@@ -41,8 +42,8 @@ class ChatAgent:
             )
         ]
         
-        # Add travel tools
-        travel_tools = TravelTools.get_tools()
+        # Add travel tools bound to this spy's context
+        travel_tools = TravelTools.get_tools(self.context_spy_id)
         for tool_info in travel_tools:
             tools.append(Tool(
                 tool_info["function"],

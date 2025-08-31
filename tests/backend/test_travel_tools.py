@@ -8,6 +8,9 @@ from src.backend.tools.travel_tools import TravelTools, GetTravelStateRequest, U
 from src.backend.tools.travel_tools import GetCitiesRequest, GetTrainSchedulesRequest, PlanJourneyRequest
 from src.backend.models import TravelState, TravelStateUpdate
 
+# Fixed timestamp for deterministic testing
+FIXED_TEST_TIME = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+
 
 class TestTravelTools:
     """Test cases for TravelTools class."""
@@ -23,7 +26,7 @@ class TestTravelTools:
         service = Mock()
         service.get_travel_state.return_value = TravelState(
             city_id="vienna",
-            time_utc=datetime.now(timezone.utc),
+            simulated_time=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -38,7 +41,7 @@ class TestTravelTools:
         """Sample travel state for testing."""
         return TravelState(
             city_id="vienna",
-            time_utc=datetime.now(timezone.utc),
+            simulated_time=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -139,7 +142,7 @@ class TestTravelTools:
             # Mock successful update
             updated_state = TravelState(
                 city_id="munich",
-                time_utc=datetime.now(timezone.utc),
+                simulated_time=FIXED_TEST_TIME,
                 inventory={
                     "passport": "Valid",
                     "tickets": ["ICE123"],
@@ -150,9 +153,9 @@ class TestTravelTools:
             mock_travel_service.update_travel_state.return_value = updated_state
             
             result = TravelTools.update_travel_state(
-                spy_id="spy_123",
+                "spy_123",  # context_spy_id
                 city_id="munich",
-                time_utc=datetime.now(timezone.utc),
+                simulated_time=FIXED_TEST_TIME,
                 inventory_updates={"tickets": ["ICE123"], "cash": "450 EUR"}
             )
             
@@ -174,9 +177,9 @@ class TestTravelTools:
             mock_travel_service.update_travel_state.return_value = None
             
             result = TravelTools.update_travel_state(
-                spy_id="spy_123",
+                "spy_123",  # context_spy_id
                 city_id="invalid_city",
-                time_utc=datetime.now(timezone.utc)
+                simulated_time=FIXED_TEST_TIME
             )
             
             assert result["response"] == "Failed to update travel state for spy spy_123"
@@ -190,9 +193,9 @@ class TestTravelTools:
             mock_get_db.side_effect = Exception("Database connection failed")
             
             result = TravelTools.update_travel_state(
-                spy_id="spy_123",
+                "spy_123",  # context_spy_id
                 city_id="munich",
-                time_utc=datetime.now(timezone.utc)
+                simulated_time=FIXED_TEST_TIME
             )
             
             assert "Error updating travel state" in result["response"]
@@ -372,7 +375,7 @@ class TestTravelTools:
 
     def test_get_tools_returns_correct_structure(self):
         """Test that get_tools returns the correct tool structure."""
-        tools = TravelTools.get_tools()
+        tools = TravelTools.get_tools("test_spy_123")
         
         assert len(tools) == 9  # Should have 9 tools
         
@@ -403,19 +406,19 @@ class TestTravelTools:
 
     def test_tool_parameters_validation(self):
         """Test that tool parameters are correctly defined."""
-        tools = TravelTools.get_tools()
+        tools = TravelTools.get_tools("test_spy_123")
         
-        # Test get_travel_state parameters
+        # Test get_travel_state parameters (no spy_id needed - bound to context)
         travel_state_tool = next(t for t in tools if t["name"] == "get_travel_state")
-        assert "spy_id" in travel_state_tool["parameters"]["properties"]
-        assert "spy_id" in travel_state_tool["parameters"]["required"]
+        assert "spy_id" not in travel_state_tool["parameters"]["properties"]
+        assert "spy_id" not in travel_state_tool["parameters"]["required"]
         
-        # Test update_travel_state parameters
+        # Test update_travel_state parameters (no spy_id needed - bound to context)
         update_tool = next(t for t in tools if t["name"] == "update_travel_state")
-        assert "spy_id" in update_tool["parameters"]["properties"]
-        assert "spy_id" in update_tool["parameters"]["required"]
+        assert "spy_id" not in update_tool["parameters"]["properties"]
+        assert "spy_id" not in update_tool["parameters"]["required"]
         assert "city_id" in update_tool["parameters"]["properties"]
-        assert "time_utc" in update_tool["parameters"]["properties"]
+        assert "simulated_time" in update_tool["parameters"]["properties"]
         assert "inventory_updates" in update_tool["parameters"]["properties"]
         
         # Test get_train_schedules parameters
@@ -431,18 +434,16 @@ class TestTravelToolsRequestModels:
     
     def test_get_travel_state_request(self):
         """Test GetTravelStateRequest model."""
-        request = GetTravelStateRequest(spy_id="spy_123")
-        assert request.spy_id == "spy_123"
+        request = GetTravelStateRequest()
+        # No fields needed - spy_id is bound to context
     
     def test_update_travel_state_request(self):
         """Test UpdateTravelStateRequest model."""
         request = UpdateTravelStateRequest(
-            spy_id="spy_123",
             city_id="munich",
-            time_utc=datetime.now(timezone.utc),
+            time_utc=FIXED_TEST_TIME,
             inventory_updates={"tickets": ["ICE123"]}
         )
-        assert request.spy_id == "spy_123"
         assert request.city_id == "munich"
         assert request.time_utc is not None
         assert request.inventory_updates == {"tickets": ["ICE123"]}

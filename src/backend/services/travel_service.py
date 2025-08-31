@@ -501,24 +501,21 @@ class TravelService:
         try:
             # Validate city_id if being updated
             if updates.city_id and updates.city_id != current_state.city_id:
-                # Check if the city exists
-                city = self.db.query(CityModel).filter(CityModel.id == updates.city_id).first()
-                if not city:
+                if not self._validate_city_exists(updates.city_id):
                     logger.warning(f"Invalid city_id: {updates.city_id}")
                     return False
             
-            # Validate time_utc if being updated
-            if updates.time_utc:
+            # Validate simulated_time if being updated
+            if updates.simulated_time:
                 # Ensure time is not in the past (allow small buffer for timezone issues)
-                if updates.time_utc < datetime.now(timezone.utc).replace(microsecond=0):
-                    logger.warning(f"Time cannot be in the past: {updates.time_utc}")
+                if updates.simulated_time < datetime.now(timezone.utc).replace(microsecond=0):
+                    logger.warning(f"Time cannot be in the past: {updates.simulated_time}")
                     return False
             
             # Validate inventory if being updated
             if updates.inventory:
-                # Basic inventory validation
-                if not isinstance(updates.inventory, dict):
-                    logger.warning("Inventory must be a dictionary")
+                if not self._validate_inventory_consistency(updates.inventory):
+                    logger.warning("Invalid inventory data")
                     return False
             
             return True
@@ -527,6 +524,61 @@ class TravelService:
             logger.error(f"Error validating state transition: {str(e)}")
             return False
     
+    def _validate_city_exists(self, city_id: str) -> bool:
+        """
+        Validate that a city exists in the database.
+        
+        Args:
+            city_id: ID of the city to validate
+            
+        Returns:
+            True if city exists, False otherwise
+        """
+        try:
+            city = self.db.query(CityModel).filter(CityModel.id == city_id).first()
+            return city is not None
+        except Exception as e:
+            logger.error(f"Error validating city existence: {str(e)}")
+            return False
+
+    def _validate_inventory_consistency(self, inventory: Dict[str, Any]) -> bool:
+        """
+        Validate that the inventory is internally consistent.
+        
+        Args:
+            inventory: Inventory to validate
+            
+        Returns:
+            True if inventory is consistent, False otherwise
+        """
+        try:
+            # Basic inventory validation
+            if not isinstance(inventory, dict):
+                logger.warning("Inventory must be a dictionary")
+                return False
+            
+            # Check for required fields
+            required_fields = ["passport", "tickets", "cash", "equipment"]
+            for field in required_fields:
+                if field not in inventory:
+                    logger.warning(f"Missing required inventory field: {field}")
+                    return False
+            
+            # Validate specific field types
+            if not isinstance(inventory.get("tickets"), list):
+                logger.warning("Tickets must be a list")
+                return False
+            
+            if not isinstance(inventory.get("equipment"), list):
+                logger.warning("Equipment must be a list")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating inventory consistency: {str(e)}")
+            return False
+
     def _validate_state_consistency(self, state: TravelState) -> bool:
         """
         Validate that the final state is internally consistent.
@@ -545,13 +597,13 @@ class TravelService:
                 return False
             
             # Check if time is valid
-            if state.time_utc.tzinfo is None:
+            if state.simulated_time.tzinfo is None:
                 logger.warning("Time must have timezone information")
                 return False
             
             # Check if inventory is valid
-            if not isinstance(state.inventory, dict):
-                logger.warning("Inventory must be a dictionary")
+            if not self._validate_inventory_consistency(state.inventory):
+                logger.warning("Inventory validation failed")
                 return False
             
             return True
@@ -578,8 +630,8 @@ class TravelService:
         if updates.city_id is not None:
             new_state_data["city_id"] = updates.city_id
         
-        if updates.time_utc is not None:
-            new_state_data["time_utc"] = updates.time_utc
+        if updates.simulated_time is not None:
+            new_state_data["simulated_time"] = updates.simulated_time
         
         if updates.inventory is not None:
             # Merge inventory updates

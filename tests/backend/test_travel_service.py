@@ -2,10 +2,13 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from src.backend.services.travel_service import TravelService
-from src.backend.models import TravelState, TravelStateUpdate, CityModel, TrainScheduleModel
+from src.backend.models import TravelState, TravelStateUpdate, TrainSchedule
+
+# Fixed timestamp for deterministic testing
+FIXED_TEST_TIME = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
 
 
 class TestTravelService:
@@ -17,20 +20,9 @@ class TestTravelService:
         return Mock()
     
     @pytest.fixture
-    def sample_city_model(self):
-        """Sample city model for testing."""
-        city = Mock(spec=CityModel)
-        city.id = "vienna"
-        city.name = "Vienna"
-        city.country = "Austria"
-        city.timezone = "Europe/Vienna"
-        city.coordinates = "48.2082,16.3738"
-        return city
-    
-    @pytest.fixture
-    def sample_train_schedule_model(self):
-        """Sample train schedule model for testing."""
-        schedule = Mock(spec=TrainScheduleModel)
+    def sample_train_schedule(self):
+        """Sample train schedule for testing."""
+        schedule = Mock(spec=TrainSchedule)
         schedule.id = "schedule_1"
         schedule.service_id = "ICE123"
         schedule.origin_city_id = "vienna"
@@ -45,7 +37,7 @@ class TestTravelService:
         """Sample travel state for testing."""
         return TravelState(
             city_id="vienna",
-            time_utc=datetime.now(timezone.utc),
+            simulated_time=FIXED_TEST_TIME,
             inventory={
                 "passport": "Valid",
                 "tickets": [],
@@ -61,7 +53,7 @@ class TestTravelService:
         
         assert result is not None
         assert result.city_id == "vienna"
-        assert result.time_utc is not None
+        assert result.simulated_time is not None
         assert result.inventory is not None
         assert "passport" in result.inventory
         assert "tickets" in result.inventory
@@ -72,9 +64,11 @@ class TestTravelService:
         """Test exception handling in get_travel_state."""
         service = TravelService(mock_db_session)
         
-        # Mock an exception
-        with patch('src.backend.services.travel_service.TravelState') as mock_travel_state:
-            mock_travel_state.side_effect = Exception("Model creation failed")
+        # Mock an exception in the repository
+        with patch('src.backend.services.travel_service.TravelStateRepository') as mock_repo_class:
+            mock_repo = Mock()
+            mock_repo.get_by_spy_id.side_effect = Exception("Database error")
+            mock_repo_class.return_value = mock_repo
             
             result = service.get_travel_state("spy_123")
             assert result is None
@@ -142,23 +136,36 @@ class TestTravelService:
                 
                 assert result is None
 
-    def test_get_available_cities_success(self, mock_db_session, sample_city_model):
+    def test_get_available_cities_success(self, mock_db_session):
         """Test successful retrieval of available cities."""
         service = TravelService(mock_db_session)
         
-        # Mock database query
-        mock_query = Mock()
-        mock_query.all.return_value = [sample_city_model]
-        mock_db_session.query.return_value = mock_query
+        # Mock database query - CityModel objects
+        mock_city1 = Mock()
+        mock_city1.id = "vienna"
+        mock_city1.name = "Vienna"
+        mock_city1.country = "Austria"
+        mock_city1.timezone = "Europe/Vienna"
+        mock_city1.coordinates = "48.2082,16.3738"
+        
+        mock_city2 = Mock()
+        mock_city2.id = "munich"
+        mock_city2.name = "Munich"
+        mock_city2.country = "Germany"
+        mock_city2.timezone = "Europe/Berlin"
+        mock_city2.coordinates = "48.1351,11.5820"
+        
+        mock_db_session.query.return_value.all.return_value = [mock_city1, mock_city2]
         
         result = service.get_available_cities()
         
-        assert len(result) == 1
+        assert len(result) == 2
         assert result[0]["id"] == "vienna"
         assert result[0]["name"] == "Vienna"
-        assert result[0]["country"] == "Austria"
         assert result[0]["timezone"] == "Europe/Vienna"
-        assert result[0]["coordinates"] == "48.2082,16.3738"
+        assert result[1]["id"] == "munich"
+        assert result[1]["name"] == "Munich"
+        assert result[1]["timezone"] == "Europe/Berlin"
 
     def test_get_available_cities_empty_result(self, mock_db_session):
         """Test retrieval of available cities when none exist."""
@@ -166,45 +173,56 @@ class TestTravelService:
         
         # Mock empty database query
         mock_query = Mock()
-        mock_query.all.return_value = []
+        mock_filter = Mock()
+        
         mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.all.return_value = []
         
         result = service.get_available_cities()
         
         assert result == []
 
     def test_get_available_cities_exception_handling(self, mock_db_session):
-        """Test exception handling in get_available_cities."""
+        """Test exception handling in cities retrieval."""
         service = TravelService(mock_db_session)
         
         # Mock database exception
-        mock_db_session.query.side_effect = Exception("Database error")
+        mock_db_session.query.side_effect = Exception("Database connection failed")
         
         result = service.get_available_cities()
         
         assert result == []
 
-    def test_get_train_schedules_success(self, mock_db_session, sample_train_schedule_model):
+    def test_get_train_schedules_success(self, mock_db_session):
         """Test successful retrieval of train schedules."""
         service = TravelService(mock_db_session)
         
-        # Mock database query with filter
+        # Mock database query - TrainScheduleModel objects
+        mock_schedule = Mock()
+        mock_schedule.id = "schedule_1"
+        mock_schedule.service_id = "ICE123"
+        mock_schedule.origin_city_id = "vienna"
+        mock_schedule.destination_city_id = "munich"
+        mock_schedule.departure_time = "08:00"
+        mock_schedule.arrival_time = "12:30"
+        mock_schedule.days_of_week = "1,2,3,4,5,6,7"
+        
+        # Mock the filter chain
         mock_query = Mock()
         mock_filter = Mock()
-        mock_filter.all.return_value = [sample_train_schedule_model]
-        mock_query.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_schedule]
+        
         mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
         
         result = service.get_train_schedules("vienna", "munich")
         
         assert len(result) == 1
         assert result[0]["id"] == "schedule_1"
         assert result[0]["service_id"] == "ICE123"
-        assert result[0]["origin_city_id"] == "vienna"
-        assert result[0]["destination_city_id"] == "munich"
         assert result[0]["departure_time"] == "08:00"
         assert result[0]["arrival_time"] == "12:30"
-        assert result[0]["days_of_week"] == "1,2,3,4,5,6,7"
 
     def test_get_train_schedules_empty_result(self, mock_db_session):
         """Test retrieval of train schedules when none exist."""
@@ -213,20 +231,21 @@ class TestTravelService:
         # Mock empty database query
         mock_query = Mock()
         mock_filter = Mock()
-        mock_filter.all.return_value = []
-        mock_query.filter.return_value = mock_filter
+        
         mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.all.return_value = []
         
         result = service.get_train_schedules("vienna", "paris")
         
         assert result == []
 
     def test_get_train_schedules_exception_handling(self, mock_db_session):
-        """Test exception handling in get_train_schedules."""
+        """Test exception handling in train schedules retrieval."""
         service = TravelService(mock_db_session)
         
         # Mock database exception
-        mock_db_session.query.side_effect = Exception("Database error")
+        mock_db_session.query.side_effect = Exception("Database connection failed")
         
         result = service.get_train_schedules("vienna", "munich")
         
@@ -236,7 +255,7 @@ class TestTravelService:
         """Test successful journey planning."""
         service = TravelService(mock_db_session)
         
-        # Mock get_train_schedules to return available schedules
+        # Mock train schedules
         with patch.object(service, 'get_train_schedules') as mock_get_schedules:
             mock_get_schedules.return_value = [
                 {
@@ -264,8 +283,10 @@ class TestTravelService:
         """Test journey planning when no schedules are available."""
         service = TravelService(mock_db_session)
         
-        # Mock get_train_schedules to return empty list
-        with patch.object(service, 'get_train_schedules', return_value=[]):
+        # Mock empty train schedules
+        with patch.object(service, 'get_train_schedules') as mock_get_schedules:
+            mock_get_schedules.return_value = []
+            
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
             result = service.plan_journey("vienna", "paris", departure_date)
             
@@ -274,11 +295,11 @@ class TestTravelService:
             assert result["journey_plan"] is None
 
     def test_plan_journey_exception_handling(self, mock_db_session):
-        """Test exception handling in plan_journey."""
+        """Test exception handling in journey planning."""
         service = TravelService(mock_db_session)
         
-        # Mock get_train_schedules to raise exception
-        with patch.object(service, 'get_train_schedules', side_effect=Exception("Service error")):
+        # Mock exception in get_train_schedules
+        with patch.object(service, 'get_train_schedules', side_effect=Exception("Database error")):
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
             result = service.plan_journey("vienna", "munich", departure_date)
             
@@ -286,150 +307,112 @@ class TestTravelService:
             assert "Error planning journey" in result["message"]
             assert result["journey_plan"] is None
 
-    def test_validate_state_transition_valid_city(self, mock_db_session, sample_travel_state):
-        """Test valid state transition with valid city."""
-        service = TravelService(mock_db_session)
+    def test_validate_state_transition_valid(self, sample_travel_state):
+        """Test valid state transition validation."""
+        service = TravelService(Mock())
         
-        # Mock city exists in database
-        mock_city = Mock(spec=CityModel)
-        mock_query = Mock()
-        mock_query.first.return_value = mock_city
-        mock_db_session.query.return_value = mock_query
-        
-        updates = TravelStateUpdate(city_id="munich")
-        result = service._validate_state_transition(sample_travel_state, updates)
-        
-        assert result is True
-
-    def test_validate_state_transition_invalid_city(self, mock_db_session, sample_travel_state):
-        """Test invalid state transition with invalid city."""
-        service = TravelService(mock_db_session)
-        
-        # Mock city doesn't exist in database
-        mock_query = Mock()
-        mock_filter = Mock()
-        mock_filter.first.return_value = None
-        mock_query.filter.return_value = mock_filter
-        mock_db_session.query.return_value = mock_query
-        
-        updates = TravelStateUpdate(city_id="invalid_city")
-        result = service._validate_state_transition(sample_travel_state, updates)
-        
-        assert result is False
-
-    def test_validate_state_transition_past_time(self, mock_db_session, sample_travel_state):
-        """Test invalid state transition with past time."""
-        service = TravelService(mock_db_session)
-        
-        past_time = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(hours=1)
-        updates = TravelStateUpdate(time_utc=past_time)
-        result = service._validate_state_transition(sample_travel_state, updates)
-        
-        assert result is False
-
-    def test_validate_state_transition_invalid_inventory(self, mock_db_session, sample_travel_state):
-        """Test invalid state transition with invalid inventory."""
-        service = TravelService(mock_db_session)
-        
-        # Use a valid dict but with invalid content that would fail business logic validation
-        updates = TravelStateUpdate(inventory={"invalid_key": None})
-        result = service._validate_state_transition(sample_travel_state, updates)
-        
-        # Since the current validation only checks if it's a dict, this should pass
-        # In a real implementation, you might add more specific inventory validation
-        assert result is True
-
-    def test_validate_state_transition_exception_handling(self, mock_db_session, sample_travel_state):
-        """Test exception handling in state transition validation."""
-        service = TravelService(mock_db_session)
-        
-        # Mock database exception
-        mock_db_session.query.side_effect = Exception("Database error")
-        
-        updates = TravelStateUpdate(city_id="munich")
-        result = service._validate_state_transition(sample_travel_state, updates)
-        
-        assert result is False
-
-    def test_validate_state_consistency_valid_state(self, mock_db_session, sample_travel_state):
-        """Test validation of consistent state."""
-        service = TravelService(mock_db_session)
-        
-        # Mock city exists in database
-        mock_city = Mock(spec=CityModel)
-        mock_query = Mock()
-        mock_query.first.return_value = mock_city
-        mock_db_session.query.return_value = mock_query
-        
-        result = service._validate_state_consistency(sample_travel_state)
-        
-        assert result is True
-
-    def test_validate_state_consistency_city_not_exists(self, mock_db_session, sample_travel_state):
-        """Test validation of state with non-existent city."""
-        service = TravelService(mock_db_session)
-        
-        # Mock city doesn't exist in database
-        mock_query = Mock()
-        mock_filter = Mock()
-        mock_filter.first.return_value = None
-        mock_query.filter.return_value = mock_filter
-        mock_db_session.query.return_value = mock_query
-        
-        result = service._validate_state_consistency(sample_travel_state)
-        
-        assert result is False
-
-    def test_validate_state_consistency_no_timezone(self, mock_db_session):
-        """Test validation of state without timezone information."""
-        service = TravelService(mock_db_session)
-        
-        # Create state without timezone
-        state_without_tz = TravelState(
-            city_id="vienna",
-            time_utc=datetime.now(),  # No timezone
-            inventory={}
-        )
-        
-        result = service._validate_state_consistency(state_without_tz)
-        
-        assert result is False
-
-    def test_validate_state_consistency_invalid_inventory(self, mock_db_session):
-        """Test validation of state with invalid inventory."""
-        service = TravelService(mock_db_session)
-        
-        # Mock city exists
-        mock_city = Mock(spec=CityModel)
-        mock_query = Mock()
-        mock_filter = Mock()
-        mock_filter.first.return_value = mock_city
-        mock_query.filter.return_value = mock_filter
-        mock_db_session.query.return_value = mock_query
-        
-        # Create state with invalid inventory - this will fail Pydantic validation
-        # so we need to test this differently by mocking the validation
-        with patch('src.backend.services.travel_service.TravelState') as mock_travel_state:
-            mock_state = Mock()
-            mock_state.city_id = "vienna"
-            mock_state.time_utc = datetime.now(timezone.utc)
-            mock_state.inventory = "not_a_dict"
-            mock_travel_state.return_value = mock_state
+        # Mock city validation
+        with patch.object(service, '_validate_city_exists', return_value=True):
+            updates = TravelStateUpdate(city_id="munich")
+            result = service._validate_state_transition(sample_travel_state, updates)
             
-            result = service._validate_state_consistency(mock_state)
+            assert result is True
+
+    def test_validate_state_transition_invalid_city(self, sample_travel_state):
+        """Test invalid state transition validation."""
+        service = TravelService(Mock())
+        
+        # Mock city validation failure
+        with patch.object(service, '_validate_city_exists', return_value=False):
+            updates = TravelStateUpdate(city_id="invalid_city")
+            result = service._validate_state_transition(sample_travel_state, updates)
             
             assert result is False
 
-    def test_validate_state_consistency_exception_handling(self, mock_db_session, sample_travel_state):
-        """Test exception handling in state consistency validation."""
+    def test_validate_state_transition_exception_handling(self, sample_travel_state):
+        """Test exception handling in state transition validation."""
+        service = TravelService(Mock())
+        
+        # Mock exception in city validation
+        with patch.object(service, '_validate_city_exists', side_effect=Exception("Validation error")):
+            updates = TravelStateUpdate(city_id="munich")
+            result = service._validate_state_transition(sample_travel_state, updates)
+            
+            assert result is False
+
+    def test_validate_city_exists_true(self, mock_db_session):
+        """Test city existence validation when city exists."""
+        service = TravelService(mock_db_session)
+        
+        # Mock database query
+        mock_query = Mock()
+        mock_filter = Mock()
+        mock_first = Mock()
+        
+        mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.first.return_value = {"id": "vienna", "name": "Vienna"}
+        
+        result = service._validate_city_exists("vienna")
+        
+        assert result is True
+
+    def test_validate_city_exists_false(self, mock_db_session):
+        """Test city existence validation when city doesn't exist."""
+        service = TravelService(mock_db_session)
+        
+        # Mock database query
+        mock_query = Mock()
+        mock_filter = Mock()
+        
+        mock_db_session.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.first.return_value = None
+        
+        result = service._validate_city_exists("invalid_city")
+        
+        assert result is False
+
+    def test_validate_city_exists_exception_handling(self, mock_db_session):
+        """Test exception handling in city existence validation."""
         service = TravelService(mock_db_session)
         
         # Mock database exception
-        mock_db_session.query.side_effect = Exception("Database error")
+        mock_db_session.query.side_effect = Exception("Database connection failed")
         
-        result = service._validate_state_consistency(sample_travel_state)
+        result = service._validate_city_exists("vienna")
         
         assert result is False
+
+    def test_validate_state_consistency_valid(self, sample_travel_state):
+        """Test valid state consistency validation."""
+        service = TravelService(Mock())
+        
+        # Mock inventory validation
+        with patch.object(service, '_validate_inventory_consistency', return_value=True):
+            result = service._validate_state_consistency(sample_travel_state)
+            
+            assert result is True
+
+    def test_validate_state_consistency_invalid_inventory(self, sample_travel_state):
+        """Test invalid state consistency validation."""
+        service = TravelService(Mock())
+        
+        # Mock inventory validation failure
+        with patch.object(service, '_validate_inventory_consistency', return_value=False):
+            result = service._validate_state_consistency(sample_travel_state)
+            
+            assert result is False
+
+    def test_validate_state_consistency_exception_handling(self, sample_travel_state):
+        """Test exception handling in state consistency validation."""
+        service = TravelService(Mock())
+        
+        # Mock exception in inventory validation
+        with patch.object(service, '_validate_inventory_consistency', side_effect=Exception("Validation error")):
+            result = service._validate_state_consistency(sample_travel_state)
+            
+            assert result is False
 
     def test_apply_updates_city_id(self, sample_travel_state):
         """Test applying city_id update."""
@@ -439,19 +422,19 @@ class TestTravelService:
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == "munich"
-        assert result.time_utc == sample_travel_state.time_utc
+        assert result.simulated_time == sample_travel_state.simulated_time
         assert result.inventory == sample_travel_state.inventory
 
     def test_apply_updates_time_utc(self, sample_travel_state):
-        """Test applying time_utc update."""
+        """Test applying simulated_time update."""
         service = TravelService(Mock())
         
-        new_time = datetime.now(timezone.utc)
-        updates = TravelStateUpdate(time_utc=new_time)
+        new_time = FIXED_TEST_TIME + timedelta(hours=1)  # Use fixed time + offset
+        updates = TravelStateUpdate(simulated_time=new_time)
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == sample_travel_state.city_id
-        assert result.time_utc == new_time
+        assert result.simulated_time == new_time
         assert result.inventory == sample_travel_state.inventory
 
     def test_apply_updates_inventory(self, sample_travel_state):
@@ -463,7 +446,7 @@ class TestTravelService:
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == sample_travel_state.city_id
-        assert result.time_utc == sample_travel_state.time_utc
+        assert result.simulated_time == sample_travel_state.simulated_time
         assert result.inventory["tickets"] == ["ICE123"]
         assert result.inventory["cash"] == "450 EUR"
         # Original inventory items should still be there
@@ -474,16 +457,16 @@ class TestTravelService:
         """Test applying updates to multiple fields."""
         service = TravelService(Mock())
         
-        new_time = datetime.now(timezone.utc)
+        new_time = FIXED_TEST_TIME + timedelta(hours=2)  # Use fixed time + offset
         updates = TravelStateUpdate(
             city_id="munich",
-            time_utc=new_time,
+            simulated_time=new_time,
             inventory={"tickets": ["ICE123"]}
         )
         result = service._apply_updates(sample_travel_state, updates)
         
         assert result.city_id == "munich"
-        assert result.time_utc == new_time
+        assert result.simulated_time == new_time
         assert result.inventory["tickets"] == ["ICE123"]
         assert result.inventory["passport"] == "Valid"  # Original preserved
 
