@@ -3,6 +3,7 @@
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+import re
 
 from .travel_base import TravelToolBase
 
@@ -85,18 +86,35 @@ class PlanningTools(TravelToolBase):
         cls,
         origin_city_id: str,
         destination_city_id: str,
-        departure_date: datetime,
+        departure_date: str,
     ) -> Dict[str, Any]:
         """Plan a journey between two cities.
 
         Args:
             origin_city_id: Origin city ID
             destination_city_id: Destination city ID
-            departure_date: Departure date and time
+            departure_date: Departure date and time (ISO 8601 format string)
 
         Returns:
             Dict containing journey plan
         """
+        # Parse the departure_date string to datetime - be permissive for LLM input
+        try:
+            if isinstance(departure_date, str):
+                # Try multiple date parsing strategies
+                departure_datetime = cls._parse_date_string(departure_date)
+            else:
+                departure_datetime = departure_date
+        except ValueError as e:
+            return {
+                "response": f"Invalid departure date format: {departure_date}. Please provide a date in formats like '2024-01-15T08:00:00', 'August 31, 2025', or '2024-01-15'",
+                "success": False,
+                "journey_plan": None,
+                "origin": origin_city_id,
+                "destination": destination_city_id,
+                "departure_date": departure_date,
+                "tool_calls": [],
+            }
         logger.debug(
             f"Planning journey from {origin_city_id} to " f"{destination_city_id}"
         )
@@ -104,7 +122,7 @@ class PlanningTools(TravelToolBase):
         try:
             travel_service = cls._get_travel_service()
             journey_result = travel_service.plan_journey(
-                origin_city_id, destination_city_id, departure_date
+                origin_city_id, destination_city_id, departure_datetime
             )
 
             if journey_result["success"]:
@@ -113,7 +131,7 @@ class PlanningTools(TravelToolBase):
                     journey_plan=journey_result["journey_plan"],
                     origin=origin_city_id,
                     destination=destination_city_id,
-                    departure_date=departure_date.isoformat(),
+                    departure_date=departure_datetime.isoformat(),
                 )
             else:
                 return {
@@ -122,7 +140,7 @@ class PlanningTools(TravelToolBase):
                     "journey_plan": None,
                     "origin": origin_city_id,
                     "destination": destination_city_id,
-                    "departure_date": departure_date.isoformat(),
+                    "departure_date": departure_datetime.isoformat(),
                     "tool_calls": [],
                 }
 
@@ -133,5 +151,64 @@ class PlanningTools(TravelToolBase):
                 journey_plan=None,
                 origin=origin_city_id,
                 destination=destination_city_id,
-                departure_date=departure_date.isoformat(),
+                departure_date=departure_datetime.isoformat(),
             )
+
+    @classmethod
+    def _parse_date_string(cls, date_string: str) -> datetime:
+        """Parse various date string formats into a datetime object.
+        
+        Args:
+            date_string: Date string in various formats
+            
+        Returns:
+            datetime object
+            
+        Raises:
+            ValueError: If the date string cannot be parsed
+        """
+        # Clean up the input
+        date_string = date_string.strip()
+        
+        # Try ISO format first (most common for APIs)
+        try:
+            return datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+        except ValueError:
+            pass
+        
+        # Try common date formats
+        date_formats = [
+            '%B %d, %Y',      # August 31, 2025
+            '%b %d, %Y',      # Aug 31, 2025
+            '%B %d %Y',       # August 31 2025
+            '%b %d %Y',       # Aug 31 2025
+            '%Y-%m-%d',       # 2025-08-31
+            '%m/%d/%Y',       # 08/31/2025
+            '%d/%m/%Y',       # 31/08/2025
+            '%Y-%m-%d %H:%M:%S',  # 2025-08-31 14:30:00
+            '%Y-%m-%d %H:%M',     # 2025-08-31 14:30
+        ]
+        
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_string, fmt)
+            except ValueError:
+                continue
+        
+        # If no format works, try to extract date components with regex
+        # Pattern for "Month Day, Year" format
+        month_day_year = re.match(r'(\w+)\s+(\d{1,2}),?\s+(\d{4})', date_string)
+        if month_day_year:
+            month_str, day_str, year_str = month_day_year.groups()
+            try:
+                # Try to parse with month name
+                return datetime.strptime(f"{month_str} {day_str}, {year_str}", '%B %d, %Y')
+            except ValueError:
+                try:
+                    # Try abbreviated month
+                    return datetime.strptime(f"{month_str} {day_str}, {year_str}", '%b %d, %Y')
+                except ValueError:
+                    pass
+        
+        # If all else fails, raise ValueError
+        raise ValueError(f"Unable to parse date string: {date_string}")

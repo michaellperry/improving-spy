@@ -74,7 +74,7 @@ class TravelTools:
         cls,
         origin_city_id: str,
         destination_city_id: str,
-        departure_date: datetime,
+        departure_date: str,
     ) -> Dict[str, Any]:
         """Plan a journey between two cities."""
         return PlanningTools.plan_journey(
@@ -265,7 +265,7 @@ class TravelTools:
                         },
                         "departure_date": {
                             "type": "string",
-                            "description": "Departure date and time (ISO 8601 format)",
+                            "description": "Departure date and time (various formats accepted: '2024-01-15T08:00:00', 'August 31, 2025', '2024-01-15')",
                         },
                     },
                     "required": [
