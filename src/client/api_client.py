@@ -38,6 +38,10 @@ class SpyAPIClient:
             error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
             logging.error(error_msg)
             raise ConnectionError(error_msg)
+        except httpx.TimeoutException as e:
+            error_msg = f"Request Timeout: The request to fetch spies took longer than {config.API_TIMEOUT} seconds to complete. Please try again."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
         except httpx.RequestError as e:
             error_msg = f"Connection Error: Unable to reach {self.base_url}/api/spies/. Please check your network connection and ensure the server is running."
             logging.error(f"{error_msg} Details: {str(e)}")
@@ -62,6 +66,10 @@ class SpyAPIClient:
             else:
                 error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
             logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.TimeoutException as e:
+            error_msg = f"Request Timeout: The request to fetch spy details took longer than {config.API_TIMEOUT} seconds to complete. Please try again."
+            logging.error(f"{error_msg} Details: {str(e)}")
             raise ConnectionError(error_msg)
         except httpx.RequestError as e:
             error_msg = f"Connection Error: Unable to reach {self.base_url}/api/spies/{spy_id}. Please check your network connection and ensure the server is running."
@@ -88,6 +96,10 @@ class SpyAPIClient:
         except httpx.HTTPStatusError as e:
             error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
             logging.error(error_msg)
+            raise ConnectionError(error_msg)
+        except httpx.TimeoutException as e:
+            error_msg = f"Request Timeout: The request to create conversation took longer than {config.API_TIMEOUT} seconds to complete. Please try again."
+            logging.error(f"{error_msg} Details: {str(e)}")
             raise ConnectionError(error_msg)
         except httpx.RequestError as e:
             error_msg = f"Connection Error: Unable to reach {self.base_url}/api/conversations. Please check your network connection and ensure the server is running."
@@ -142,6 +154,10 @@ class SpyAPIClient:
                 error_msg = f"API Error: HTTP {e.response.status_code} - {e.response.text}"
             logging.error(error_msg)
             raise ConnectionError(error_msg)
+        except httpx.TimeoutException as e:
+            error_msg = f"Request Timeout: The chat request took longer than {config.API_TIMEOUT} seconds to complete. This may be due to the AI agent processing a complex request or using tools. Please try again or send a simpler message."
+            logging.error(f"{error_msg} Details: {str(e)}")
+            raise ConnectionError(error_msg)
         except httpx.RequestError as e:
             error_msg = f"Connection Error: Unable to reach {self.base_url}/api/chat/conversation/{conversation_id}. Please check your network connection and ensure the server is running."
             logging.error(f"{error_msg} Details: {str(e)}")
@@ -192,10 +208,10 @@ class SpyAPIClient:
                 return self.ws
                 
             except asyncio.TimeoutError:
-                error_msg = f"WebSocket connection timed out (attempt {attempt+1}/{self.ws_retry_attempts})"
+                error_msg = f"WebSocket connection timed out after 10 seconds (attempt {attempt+1}/{self.ws_retry_attempts})"
                 logging.error(error_msg)
                 if attempt == self.ws_retry_attempts - 1:  # Last attempt
-                    raise ConnectionError(f"WebSocket connection failed: {error_msg}. Please check your network connection and ensure the server is running.")
+                    raise ConnectionError(f"WebSocket connection failed: {error_msg}. The server may be overloaded or not responding. Please check your network connection and ensure the server is running.")
                     
             except Exception as e:
                 self.reconnect_attempts += 1

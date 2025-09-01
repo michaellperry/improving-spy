@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 # API settings
 API_BASE_URL = os.environ.get("SPY_API_URL", "http://localhost:8000")
-API_TIMEOUT = 30  # seconds
+API_TIMEOUT = 60  # seconds
 
 # WebSocket settings
 WS_BASE_URL = os.environ.get("SPY_WS_URL", "ws://localhost:8000")
