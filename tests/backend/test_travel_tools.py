@@ -4,8 +4,9 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 from typing import Dict, Any
 
-from src.backend.tools.travel_tools import TravelTools, GetTravelStateRequest
-from src.backend.tools.travel_tools import GetCitiesRequest, GetTrainSchedulesRequest, PlanJourneyRequest
+from src.backend.tools.travel_tools import TravelTools
+from src.backend.tools.travel_models import GetTravelStateRequest
+from src.backend.tools.travel_models import GetCitiesRequest, GetTrainSchedulesRequest, PlanJourneyRequest
 from src.backend.models import TravelState, TravelStateUpdate
 
 # Fixed timestamp for deterministic testing
@@ -87,8 +88,8 @@ class TestTravelTools:
 
     def test_get_travel_state_success(self, mock_db_session, mock_travel_service):
         """Test successful retrieval of travel state."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service_class.return_value = mock_travel_service
@@ -104,8 +105,8 @@ class TestTravelTools:
 
     def test_get_travel_state_no_state_found(self, mock_db_session):
         """Test travel state retrieval when no state exists."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -121,7 +122,7 @@ class TestTravelTools:
 
     def test_get_travel_state_error_handling(self, mock_db_session):
         """Test error handling in travel state retrieval."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
             
             result = TravelTools.get_travel_state("spy_789")
@@ -133,8 +134,8 @@ class TestTravelTools:
 
     def test_get_available_cities_success(self, mock_db_session, sample_cities):
         """Test successful retrieval of available cities."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -150,8 +151,8 @@ class TestTravelTools:
 
     def test_get_available_cities_empty_list(self, mock_db_session):
         """Test retrieval of available cities when none exist."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -167,7 +168,7 @@ class TestTravelTools:
 
     def test_get_available_cities_error_handling(self, mock_db_session):
         """Test error handling in cities retrieval."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
             
             result = TravelTools.get_available_cities()
@@ -179,8 +180,8 @@ class TestTravelTools:
 
     def test_get_train_schedules_success(self, mock_db_session, sample_train_schedules):
         """Test successful retrieval of train schedules."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -198,8 +199,8 @@ class TestTravelTools:
 
     def test_get_train_schedules_no_schedules(self, mock_db_session):
         """Test train schedules retrieval when none exist."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -217,7 +218,7 @@ class TestTravelTools:
 
     def test_get_train_schedules_error_handling(self, mock_db_session):
         """Test error handling in train schedules retrieval."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
             
             result = TravelTools.get_train_schedules("vienna", "munich")
@@ -231,8 +232,8 @@ class TestTravelTools:
 
     def test_get_train_schedules_no_destination(self, mock_db_session, sample_train_schedules):
         """Test successful retrieval of train schedules without destination (all from origin city)."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -251,8 +252,8 @@ class TestTravelTools:
 
     def test_get_train_schedules_no_destination_no_schedules(self, mock_db_session):
         """Test train schedules retrieval without destination when none exist."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -271,8 +272,8 @@ class TestTravelTools:
 
     def test_plan_journey_success(self, mock_db_session):
         """Test successful journey planning."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -304,8 +305,8 @@ class TestTravelTools:
 
     def test_plan_journey_failure(self, mock_db_session):
         """Test journey planning failure."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db, \
-             patch('src.backend.tools.travel_tools.TravelService') as mock_service_class:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db, \
+             patch('src.backend.tools.travel_base.TravelService') as mock_service_class:
             
             mock_get_db.return_value = iter([mock_db_session])
             mock_service = Mock()
@@ -328,7 +329,7 @@ class TestTravelTools:
 
     def test_plan_journey_error_handling(self, mock_db_session):
         """Test error handling in journey planning."""
-        with patch('src.backend.tools.travel_tools.get_db') as mock_get_db:
+        with patch('src.backend.tools.travel_base.get_db') as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
             
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
