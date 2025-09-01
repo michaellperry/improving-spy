@@ -12,6 +12,28 @@ globs: *.py
 - Prefer list/dict comprehensions over explicit loops when appropriate
 - Use `pathlib.Path` for file operations instead of `os.path`
 
+## File Size and Complexity Guidelines ⭐ **CRITICAL**
+- **Maximum file size**: 300 lines per file
+- **Maximum function size**: 50 lines per function
+- **Maximum class size**: 200 lines per class
+- **Cyclomatic complexity**: Maximum 10 per function
+- **Use tools**: flake8, pylint, or mypy for enforcement
+- **Refactoring triggers**: Files exceeding limits must be split into focused modules
+
+## Single Responsibility Principles ⭐ **CRITICAL**
+- **One class, one reason to change**: Each class should have a single, well-defined purpose
+- **Service boundaries**: Separate business logic, data access, and presentation concerns
+- **Interface segregation**: Keep interfaces focused and cohesive
+- **Dependency direction**: Dependencies should point toward abstractions, not concretions
+- **Module cohesion**: Each module should have a clear, single responsibility
+
+## Architecture Patterns
+- **Service Layer**: Business logic in dedicated service classes
+- **Repository Pattern**: Data access through repository interfaces
+- **Dependency Injection**: Use FastAPI's Depends() for all external dependencies
+- **Interface Definitions**: Define clear contracts between layers
+- **Separation of Concerns**: Keep UI, business logic, and data access separate
+
 ## FastAPI Conventions
 - Use dependency injection with `Depends()` for database sessions and services
 - Return Pydantic models as response models
@@ -50,9 +72,31 @@ globs: *.py
 - Use `__init__.py` files to expose public APIs
 - Group imports: standard library, third-party, local
 - Maintain clear separation between backend and frontend code
+- **Public API**: Use __init__.py to expose only necessary interfaces
+- **Internal modules**: Keep implementation details private
+- **Circular dependencies**: Strictly prohibited
+
+## Module Organization Standards
+- **Maximum imports per file**: 10 external dependencies
+- **Import organization**: Group by standard library, third-party, local
+- **Relative imports**: Use relative imports within packages
+- **Absolute imports**: Use absolute imports for external packages
+
+## Refactoring Guidelines
+- **Files exceeding 300 lines**: Must be split into multiple focused modules
+- **Classes with >5 public methods**: Should be decomposed into smaller classes
+- **Functions with >3 parameters**: Should be refactored using parameter objects
+- **Modules with >10 imports**: Should be reviewed for responsibility boundaries
+- **Circular dependencies**: Immediately refactor to break dependency cycles
 
 ## Documentation
 - Use docstrings for all public functions and classes
 - Include type information in docstrings
 - Document complex business logic with inline comments
 - Keep README files updated with current project status
+- **Architecture documentation**: Document service boundaries and dependencies
+- **API documentation**: Use FastAPI's automatic documentation features
+
+## Performance and Maintainability
+- **Memory efficiency**: Avoid loading large datasets into memory
+- **Database queries**: Use efficient queries with proper indexing
