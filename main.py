@@ -1,7 +1,60 @@
+import logging
+import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.backend.api.routes import router
 from src.backend.core.database import init_db
+
+# Create a custom formatter that matches uvicorn's style
+class ColouredFormatter(logging.Formatter):
+    """Custom formatter that matches uvicorn's colored log format."""
+    
+    level_name_colors = {
+        logging.DEBUG: lambda level_name: f"\033[36m{level_name}\033[0m",  # cyan
+        logging.INFO: lambda level_name: f"\033[32m{level_name}\033[0m",   # green
+        logging.WARNING: lambda level_name: f"\033[33m{level_name}\033[0m", # yellow
+        logging.ERROR: lambda level_name: f"\033[31m{level_name}\033[0m",   # red
+        logging.CRITICAL: lambda level_name: f"\033[35m{level_name}\033[0m", # magenta
+    }
+    
+    def format(self, record):
+        # Create levelprefix with consistent padding like uvicorn
+        levelname = record.levelname
+        separator = " " * (8 - len(levelname))
+        
+        # Color the level name if output is to terminal
+        if sys.stdout.isatty():
+            color_func = self.level_name_colors.get(record.levelno, lambda x: x)
+            levelname = color_func(levelname)
+        
+        levelprefix = f"{levelname}:{separator}"
+        record.levelprefix = levelprefix
+        
+        # Use uvicorn-style format
+        return f"{levelprefix} {record.getMessage()}"
+
+# Configure logging for the backend
+LOG_LEVEL = os.environ.get("SPY_LOG_LEVEL", "DEBUG")  # Default to DEBUG
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper()),
+    format='%(levelprefix)s %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Output to console
+    ]
+)
+
+# Apply our custom formatter to the root logger
+root_logger = logging.getLogger()
+for handler in root_logger.handlers:
+    handler.setFormatter(ColouredFormatter())
+
+# Set specific logger levels for noisy third-party libraries
+logging.getLogger("uvicorn").setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+logging.getLogger("fastapi").setLevel(logging.INFO)
+# Reduce noise from openai client debug messages
+logging.getLogger("openai._base_client").setLevel(logging.WARNING)
 
 app = FastAPI(
     title="🕵️ Spy Agent Chat API", 
