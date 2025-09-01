@@ -6,17 +6,20 @@ Screen {
 
 /* App grid layout */
 #app-grid {
-    layout: horizontal;
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 30% 1fr;  /* Left panel takes 30%, right panel takes remaining space */
     height: 100%;
+    width: 100%;
 }
 
 .left-panel {
-    width: 30%;
+    width: 100%;
     height: 1fr;
 }
 
 .right-panel {
-    width: 70%;
+    width: 100%;
     height: 1fr;
     layout: vertical;
 }
