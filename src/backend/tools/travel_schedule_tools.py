@@ -29,7 +29,7 @@ class ScheduleTools(TravelToolBase):
         Returns:
             Dict containing available train services
         """
-        logger.debug(
+        logger.info(
             f"Getting train schedules from {origin_id} to "
             f"{destination_id or 'any destination'}"
         )
@@ -75,12 +75,12 @@ class ScheduleTools(TravelToolBase):
             Dict containing train schedules
         """
         if destination_city_id:
-            logger.debug(
+            logger.info(
                 f"Getting train schedules from {origin_city_id} to "
                 f"{destination_city_id}"
             )
         else:
-            logger.debug(f"Getting all train schedules from {origin_city_id}")
+            logger.info(f"Getting all train schedules from {origin_city_id}")
 
         try:
             travel_service = cls._get_travel_service()

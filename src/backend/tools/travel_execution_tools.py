@@ -23,7 +23,7 @@ class TravelExecutionTools(TravelToolBase):
         Returns:
             Dict containing travel result and updated state
         """
-        logger.debug(
+        logger.info(
             f"Executing travel on service: {service_id} for spy: " f"{context_spy_id}"
         )
 
@@ -71,7 +71,7 @@ class TravelExecutionTools(TravelToolBase):
         Returns:
             Dict containing travel state information
         """
-        logger.debug(f"Getting travel state for spy: {context_spy_id}")
+        logger.info(f"Getting travel state for spy: {context_spy_id}")
 
         try:
             travel_service = cls._get_travel_service()

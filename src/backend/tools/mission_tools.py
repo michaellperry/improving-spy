@@ -29,7 +29,7 @@ class MissionTools:
         Returns:
             Dict containing mission context with required fields for ChatResponse
         """
-        logger.debug("Looking up mission context for mission_id: %s", mission_id)
+        logger.info("Looking up mission context for mission_id: %s", mission_id)
         mission_path = Path(f"missions/{mission_id}.txt")
 
         if not mission_path.exists():
@@ -43,7 +43,7 @@ class MissionTools:
             }
 
         try:
-            logger.debug("Reading mission file: %s", mission_path)
+            logger.info("Reading mission file: %s", mission_path)
             content = mission_path.read_text(encoding="utf-8")
 
             result = {
@@ -54,7 +54,7 @@ class MissionTools:
                 "tool_calls": [],
             }
 
-            logger.debug("Successfully retrieved mission context for %s", mission_id)
+            logger.info("Successfully retrieved mission context for %s", mission_id)
             return result
 
         except Exception as e:

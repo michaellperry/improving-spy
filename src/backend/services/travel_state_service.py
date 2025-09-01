@@ -30,12 +30,12 @@ class TravelStateService:
             TravelState object or None if not found
         """
         try:
-            logger.debug(f"Getting travel state for spy: {spy_id}")
+            logger.info(f"Getting travel state for spy: {spy_id}")
             
             travel_state = self._repository.get_by_spy_id(spy_id)
             
             if not travel_state:
-                logger.debug(f"No travel state found for spy {spy_id}, creating default state")
+                logger.info(f"No travel state found for spy {spy_id}, creating default state")
                 travel_state = self._create_default_state(spy_id)
             
             return travel_state
@@ -56,7 +56,7 @@ class TravelStateService:
             Updated TravelState object or None if update failed
         """
         try:
-            logger.debug(f"Updating travel state for spy: {spy_id}")
+            logger.info(f"Updating travel state for spy: {spy_id}")
             return self._repository.update(spy_id, updates)
             
         except Exception as e:

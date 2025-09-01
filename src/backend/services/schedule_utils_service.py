@@ -31,7 +31,7 @@ class ScheduleUtilsService:
             List of available train services
         """
         try:
-            logger.debug(f"Getting available services from {origin_id} to {destination_id or 'any destination'}")
+            logger.info(f"Getting available services from {origin_id} to {destination_id or 'any destination'}")
             
             # Build query
             query = self.db.query(TrainScheduleModel).filter(

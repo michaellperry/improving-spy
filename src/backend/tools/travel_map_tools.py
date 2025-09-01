@@ -19,7 +19,7 @@ class MapTools(TravelToolBase):
         Returns:
             Dict containing cities and route edges with timezone info
         """
-        logger.debug("Getting transportation network map")
+        logger.info("Getting transportation network map")
 
         try:
             travel_service = cls._get_travel_service()
@@ -46,7 +46,7 @@ class MapTools(TravelToolBase):
         Returns:
             Dict containing available cities
         """
-        logger.debug("Getting available cities")
+        logger.info("Getting available cities")
 
         try:
             travel_service = cls._get_travel_service()

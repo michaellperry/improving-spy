@@ -36,7 +36,7 @@ class PlanningTools(TravelToolBase):
         Returns:
             Dict containing planned route itinerary
         """
-        logger.debug(
+        logger.info(
             f"Planning route from {origin_id} to {dest_id} for spy: "
             f"{context_spy_id}"
         )
@@ -115,7 +115,7 @@ class PlanningTools(TravelToolBase):
                 "departure_date": departure_date,
                 "tool_calls": [],
             }
-        logger.debug(
+        logger.info(
             f"Planning journey from {origin_city_id} to " f"{destination_city_id}"
         )
 

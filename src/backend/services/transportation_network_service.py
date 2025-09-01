@@ -24,7 +24,7 @@ class TransportationNetworkService:
             Dict containing cities and route edges with timezone info
         """
         try:
-            logger.debug("Getting transportation network map")
+            logger.info("Getting transportation network map")
             
             cities_data = self._get_cities_data()
             edges_data = self._get_route_edges()

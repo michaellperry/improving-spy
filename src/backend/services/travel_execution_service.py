@@ -31,7 +31,7 @@ class TravelExecutionService:
             Dict containing travel result and updated state
         """
         try:
-            logger.debug(f"Executing travel on service: {service_id} for spy: {spy_id}")
+            logger.info(f"Executing travel on service: {service_id} for spy: {spy_id}")
             
             # Get current travel state
             current_state = self._travel_state_service.get_travel_state(spy_id)
