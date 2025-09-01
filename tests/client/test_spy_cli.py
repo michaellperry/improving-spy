@@ -45,14 +45,14 @@ class TestSpyCommandConsole:
     @pytest.mark.asyncio
     async def test_on_mount(self, console):
         """Test on_mount method"""
-        # Mock the setup_ui method
-        console.setup_ui = AsyncMock()
+        # Mock the ui_manager.setup_initial_ui method instead of the old setup_ui
+        console.ui_manager.setup_initial_ui = AsyncMock()
         
         # Call on_mount
         await console.on_mount()
         
-        # Check that setup_ui was called
-        console.setup_ui.assert_called_once()
+        # Check that setup_initial_ui was called with the spies
+        console.ui_manager.setup_initial_ui.assert_called_once_with(SAMPLE_SPIES)
         
         # Check that spies were fetched
         console.api_client.get_spies.assert_called_once()

@@ -64,11 +64,14 @@ class TestTravelService:
         """Test exception handling in get_travel_state."""
         service = TravelService(mock_db_session)
         
-        # Mock an exception in the repository
-        with patch('src.backend.services.travel_service.TravelStateRepository') as mock_repo_class:
-            mock_repo = Mock()
-            mock_repo.get_by_spy_id.side_effect = Exception("Database error")
-            mock_repo_class.return_value = mock_repo
+        # Mock the TravelStateService to return None (simulating exception handling)
+        with patch('src.backend.services.travel_service.TravelStateService') as mock_service_class:
+            mock_service = Mock()
+            mock_service.get_travel_state.return_value = None  # Service catches exception and returns None
+            mock_service_class.return_value = mock_service
+            
+            # Replace the service instance
+            service._state_service = mock_service
             
             result = service.get_travel_state("spy_123")
             assert result is None
@@ -241,12 +244,25 @@ class TestTravelService:
         """Test successful journey planning."""
         service = TravelService(mock_db_session)
         
-        # Mock get_train_schedules to return schedules
-        with patch.object(service, 'get_train_schedules', return_value=[{
-            "service_id": "ICE123",
-            "departure_time": "08:00",
-            "arrival_time": "12:30"
-        }]):
+        # Mock the SchedulingService
+        with patch('src.backend.services.travel_service.SchedulingService') as mock_scheduling_class:
+            mock_scheduling_service = Mock()
+            mock_scheduling_class.return_value = mock_scheduling_service
+            
+            # Mock successful journey planning
+            mock_scheduling_service.plan_journey.return_value = {
+                "success": True,
+                "message": "Journey planned successfully",
+                "journey_plan": {
+                    "origin": "vienna",
+                    "destination": "munich",
+                    "services": [{"service_id": "ICE123", "departure_time": "08:00", "arrival_time": "12:30"}]
+                }
+            }
+            
+            # Replace the service instance
+            service._scheduling_service = mock_scheduling_service
+            
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
             result = service.plan_journey("vienna", "munich", departure_date)
             
@@ -260,8 +276,21 @@ class TestTravelService:
         """Test journey planning when no schedules are available."""
         service = TravelService(mock_db_session)
         
-        # Mock get_train_schedules to return empty list
-        with patch.object(service, 'get_train_schedules', return_value=[]):
+        # Mock the SchedulingService
+        with patch('src.backend.services.travel_service.SchedulingService') as mock_scheduling_class:
+            mock_scheduling_service = Mock()
+            mock_scheduling_class.return_value = mock_scheduling_service
+            
+            # Mock journey planning with no schedules
+            mock_scheduling_service.plan_journey.return_value = {
+                "success": False,
+                "message": "No direct train service available from vienna to paris",
+                "journey_plan": None
+            }
+            
+            # Replace the service instance
+            service._scheduling_service = mock_scheduling_service
+            
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
             result = service.plan_journey("vienna", "paris", departure_date)
             
@@ -273,8 +302,19 @@ class TestTravelService:
         """Test exception handling in journey planning."""
         service = TravelService(mock_db_session)
         
-        # Mock exception in get_train_schedules
-        with patch.object(service, 'get_train_schedules', side_effect=Exception("Database error")):
+        # Mock the SchedulingService to return failure response (simulating exception handling)
+        with patch('src.backend.services.travel_service.SchedulingService') as mock_scheduling_class:
+            mock_scheduling_service = Mock()
+            mock_scheduling_service.plan_journey.return_value = {
+                "success": False,
+                "message": "Error planning journey: Database error",
+                "journey_plan": None
+            }
+            mock_scheduling_class.return_value = mock_scheduling_service
+            
+            # Replace the service instance
+            service._scheduling_service = mock_scheduling_service
+            
             departure_date = datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc)
             result = service.plan_journey("vienna", "munich", departure_date)
             

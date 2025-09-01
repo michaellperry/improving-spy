@@ -12,6 +12,193 @@ globs: *.py
 - Prefer list/dict comprehensions over explicit loops when appropriate
 - Use `pathlib.Path` for file operations instead of `os.path`
 
+## Linting and Code Quality Tools ⭐ **CRITICAL**
+
+### Black Code Formatter
+- **Configuration**: Use Black's default settings (88 character line length)
+- **Pre-commit**: Format all Python files before committing
+- **Command**: `uv run black src/ tests/`
+- **Integration**: Configure your editor to format on save
+- **Exceptions**: Only override Black formatting for critical readability issues
+
+### Flake8 Linting
+- **Configuration**: Use strict settings for maximum code quality
+- **Error Codes**: Address all E (style), W (warning), and F (pyflakes) errors
+- **Import Organization**: Use isort or manual organization
+- **Command**: `uv run flake8 src/ tests/`
+- **Max Line Length**: 88 characters (matching Black)
+- **Ignore Rules**: Only ignore rules with documented justification
+
+### Pytest Testing Framework
+- **Test Discovery**: Use `tests/` directory structure
+- **Naming**: Test files should be `test_*.py` or `*_test.py`
+- **Fixtures**: Use `conftest.py` for shared fixtures
+- **Coverage**: Aim for >80% code coverage
+- **Command**: `uv run pytest --cov=src --cov-report=term-missing`
+- **Async Tests**: Use `pytest-asyncio` for async function testing
+
+### Type Checking (Future Enhancement)
+- **Tool**: Consider adding mypy for static type checking
+- **Configuration**: Strict mode for maximum type safety
+- **Command**: `uv run mypy src/`
+- **Integration**: Run type checking in CI/CD pipeline
+
+## Linting Configuration Standards
+
+### Black Configuration (pyproject.toml)
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+```
+
+### Flake8 Configuration (pyproject.toml)
+```toml
+[tool.flake8]
+max-line-length = 88
+extend-ignore = [
+    "E203",  # whitespace before ':'
+    "W503",  # line break before binary operator
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    ".mypy_cache",
+]
+per-file-ignores = [
+    "__init__.py:F401",  # unused imports in __init__.py
+]
+```
+
+### Pytest Configuration (pyproject.toml)
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+```
+
+## Manual Code Quality Checks ⭐ **CRITICAL**
+
+### Required Quality Checks
+1. **Black Formatting**: `uv run black --check src/ tests/`
+2. **Flake8 Linting**: `uv run flake8 src/ tests/`
+3. **Pytest Tests**: `uv run pytest --cov=src --cov-fail-under=80`
+4. **Import Sorting**: `uv run isort --check-only src/ tests/`
+
+### Manual Check Commands
+```bash
+# Format code
+uv run black src/ tests/
+
+# Sort imports
+uv run isort src/ tests/
+
+# Run all checks
+uv run black --check src/ tests/ && uv run flake8 src/ tests/ && uv run pytest --cov=src --cov-fail-under=80
+```
+
+## Code Quality Metrics ⭐ **CRITICAL**
+
+### Required Metrics
+- **Test Coverage**: Minimum 80% for all new code
+- **Flake8 Score**: Zero errors, warnings only with justification
+- **Black Compliance**: 100% formatting compliance
+- **Type Coverage**: 100% type hints for public APIs (when mypy is added)
+
+### Quality Gates
+- **CI/CD Pipeline**: All linting checks must pass
+- **Pull Requests**: Require passing tests and linting
+- **Code Review**: Address all linting warnings before merge
+- **Documentation**: Update docs for any API changes
+
+## Import Organization Standards
+
+### Import Order (Manual or isort)
+1. **Standard Library**: Python built-in modules
+2. **Third-party**: External packages (FastAPI, SQLAlchemy, etc.)
+3. **Local**: Project-specific modules
+4. **Separate groups**: Use blank lines between groups
+
+### Import Guidelines
+```python
+# Standard library imports
+import os
+import sys
+from pathlib import Path
+from typing import List, Optional
+
+# Third-party imports
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
+import pydantic
+
+# Local imports
+from src.backend.models import Spy
+from src.backend.services import agent
+```
+
+## Error Handling and Logging Standards
+
+### Logging Configuration
+- **Structured Logging**: Use logfire for consistent log formatting
+- **Log Levels**: Use appropriate levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- **Context**: Include relevant context in log messages
+- **Sensitive Data**: Never log passwords, tokens, or personal information
+
+### Error Handling Patterns
+```python
+import logging
+from fastapi import HTTPException
+from logfire import Logger
+
+logger = Logger(__name__)
+
+def safe_operation():
+    try:
+        # Operation that might fail
+        result = risky_function()
+        logger.info("Operation completed successfully", result=result)
+        return result
+    except SpecificException as e:
+        logger.error("Operation failed", error=str(e), context="safe_operation")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        logger.critical("Unexpected error", error=str(e), context="safe_operation")
+        raise HTTPException(status_code=500, detail="Internal server error")
+```
+
 ## File Size and Complexity Guidelines ⭐ **CRITICAL**
 - **Maximum file size**: 300 lines per file
 - **Maximum function size**: 50 lines per function
@@ -96,6 +283,26 @@ globs: *.py
 - Keep README files updated with current project status
 - **Architecture documentation**: Document service boundaries and dependencies
 - **API documentation**: Use FastAPI's automatic documentation features
+
+## Performance and Maintainability
+- **Memory efficiency**: Avoid loading large datasets into memory
+- **Database queries**: Use efficient queries with proper indexing
+
+## Development Workflow ⭐ **CRITICAL**
+
+### Daily Development Process
+1. **During Development**: Run linting tools frequently
+2. **Before Committing**: Run manual quality checks
+3. **Before Pushing**: Ensure all quality checks pass locally
+
+### Code Review Checklist
+- [ ] All linting tools pass (Black, Flake8)
+- [ ] Test coverage meets minimum requirements
+- [ ] Type hints are complete and accurate
+- [ ] Documentation is updated
+- [ ] Error handling is appropriate
+- [ ] Performance considerations addressed
+- [ ] Security implications reviewed
 
 ## Performance and Maintainability
 - **Memory efficiency**: Avoid loading large datasets into memory
